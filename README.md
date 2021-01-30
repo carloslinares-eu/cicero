@@ -1,0 +1,2 @@
+# cicero
+Powerpoint translation tool
