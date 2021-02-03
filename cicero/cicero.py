@@ -3,8 +3,7 @@ import tkinter.messagebox
 import tkinter.scrolledtext
 import tkinter.ttk
 import tkinter.filedialog
-import PIL.ImageTk
-import PIL.Image
+import login
 
 main_window = tkinter.Tk()
 main_window.title("CICERO - ATEXIS Powerpoint Translator App")
@@ -36,8 +35,9 @@ def set_output(entry):
     entry.insert(0, path_to_file)
 
 
-def translate_powerpoint_file(original_language, translated_language):
-    pass
+def translate_powerpoint_file(input, output, original_language, translated_language):
+    credentials, scoped_credentials = login.login_with_json("/home/carlos/Documentos/cicero/ATX-CORP-AIresearch-f7577a6626b5.json")
+
 
 
 input_label = tkinter.Label(main_window, text="Input file", anchor="w", font=text_format_01)
