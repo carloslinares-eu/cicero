@@ -1,4 +1,4 @@
-def translate_text(target, text):
+def translate_text(target, text, login_data):
     """Translates text into the target language.
 
     Target must be an ISO 639-1 language code.
@@ -7,7 +7,7 @@ def translate_text(target, text):
     import six
     from google.cloud import translate_v2 as translate
 
-    translate_client = translate.Client()
+    translate_client = translate.Client(credentials=login_data)
 
     if isinstance(text, six.binary_type):
         text = text.decode("utf-8")
@@ -19,3 +19,4 @@ def translate_text(target, text):
     print(u"Text: {}".format(result["input"]))
     print(u"Translation: {}".format(result["translatedText"]))
     print(u"Detected source language: {}".format(result["detectedSourceLanguage"]))
+
