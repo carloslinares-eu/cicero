@@ -8,8 +8,8 @@ import login
 main_window = tkinter.Tk()
 main_window.title("CICERO - ATEXIS Powerpoint Translator App")
 main_window.geometry("500x400")
-# main_window.resizable(0, 0)
-# main_window.iconbitmap("@./cicero.ico")
+main_window.resizable(0, 0)
+main_window.iconbitmap("cicero/cicero.ico")
 text_format_01 = ("Segoe UI", 10)
 text_format_02 = ("Segoe UI", 8)
 text_format_03 = ("Segoe UI", 6)
@@ -37,7 +37,6 @@ def set_output(entry):
 
 def translate_powerpoint_file(input, output, original_language, translated_language):
     credentials, scoped_credentials = login.login_with_json("/home/carlos/Documentos/cicero/ATX-CORP-AIresearch-f7577a6626b5.json")
-
 
 
 input_label = tkinter.Label(main_window, text="Input file", anchor="w", font=text_format_01)
