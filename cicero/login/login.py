@@ -7,8 +7,7 @@ import google.auth.exceptions
 
 
 class LoginApp:
-    def __init__(self, main_app):
-        self.main_app = main_app
+    def __init__(self):
         self.root = tkinter.Tk()
         self.root.title("CICERO - Login")
         self.root.geometry("400x120")
@@ -23,7 +22,8 @@ class LoginApp:
 
         self.credentials = None
         self.credentials_scoped = None
-        self.is_logged_in = False
+        self.has_logged_in = False
+
         self.valid_license_filetypes = (("JavaScript Object Notation", "*.json"), ("All files", "*.*"))
 
     def initialize(self):
@@ -56,17 +56,16 @@ class LoginApp:
         translate_client = google.cloud.translate_v2.Client(credentials=self.credentials)
         try:
             translate_client.translate("TEST", target_language="EN")
-            self.is_logged_in = True
+            self.has_logged_in = True
 
         except google.auth.exceptions.RefreshError:
             refresh_error_message = "The credentials' access token failed.\n"
             refresh_error_message += "If the problem persist the key has probably expired."
             tkinter.messagebox.showerror(title="Critical error", message=refresh_error_message)
-            self.is_logged_in = False
+            self.has_logged_in = False
 
     def login_into_main_app(self):
         self.load_service_account_file()
         self.check_service_account_file()
-        if self.is_logged_in is True:
+        if self.has_logged_in is True:
             self.root.destroy()
-            self.main_app.root.mainloop()
