@@ -64,8 +64,17 @@ class LoginApp:
             tkinter.messagebox.showerror(title="Critical error", message=refresh_error_message)
             self.has_logged_in = False
 
+        except google.auth.exceptions.GoogleAuthError:
+            auth_error_message = "Could not automatically determine credentials."
+            auth_error_message += "Please, explicitly create credentials and re-run the application"
+            tkinter.messagebox.showerror(title="Critical error", message=auth_error_message)
+            self.has_logged_in = False
+
     def login_into_main_app(self):
         self.load_service_account_file()
-        self.check_service_account_file()
+        if self.credentials is not None:
+            self.check_service_account_file()
+        else:
+            return
         if self.has_logged_in is True:
             self.root.destroy()
