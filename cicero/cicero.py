@@ -1,4 +1,4 @@
-from login.login import LoginApp
+from login import LoginApp
 from pptxtranslator import TranslationApp
 
 

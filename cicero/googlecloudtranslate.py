@@ -1,4 +1,4 @@
-def translate_text(target, text):
+def translate_text(login_data, target, text):
     """Translates text into the target language.
 
     Target must be an ISO 639-1 language code.
@@ -19,4 +19,3 @@ def translate_text(target, text):
     print(u"Text: {}".format(result["input"]))
     print(u"Translation: {}".format(result["translatedText"]))
     print(u"Detected source language: {}".format(result["detectedSourceLanguage"]))
-
