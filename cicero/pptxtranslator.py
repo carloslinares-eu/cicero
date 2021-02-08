@@ -13,7 +13,7 @@ class TranslationApp:
         self.credentials = credentials
         self.translate_client = google.cloud.translate_v2.Client(credentials=self.credentials)
         self.root = tkinter.Tk()
-        self.root.title("CICERO - ATEXIS Powerpoint Translator App")
+        self.root.title("CICERO - Powerpoint Translator App")
         self.root.geometry("500x400")
         self.root.resizable(0, 0)
         self.root.iconbitmap("resources/cicero.ico")
@@ -22,19 +22,17 @@ class TranslationApp:
         self.small = ("Segoe UI", 6)
         self.main_width = 60
 
-        self.origin_language_code = None
-        self.target_language_code = None
-
         self.input_label = tkinter.Label(self.root, text="Input file", anchor="w", font=self.large)
         self.input_entry = tkinter.Entry(self.root, font=self.large, width=54)
         self.browse_button = tkinter.ttk.Button(self.root, text="Browse", command=self.set_input)
 
         self.origin_label = tkinter.ttk.Label(self.root, text="Origin Language", anchor="w", font=self.medium)
-        self.origin_dropdown = DynamicCombobox(self)
-        self.origin_dropdown.bind("<<ComboboxSelected>>", self.get_origin_language)
+        self.origin_combo = tkinter.ttk.Combobox(self.root)
+        self.origin_combo.configure(postcommand=self.origin_combo.configure(values=self.get_language_list()))
 
         self.target_label = tkinter.ttk.Label(self.root, text="Target Language", anchor="w", font=self.medium)
-        self.target_dropdown = DynamicCombobox(self, input_language=self.origin_dropdown.get())
+        self.target_combo = tkinter.ttk.Combobox(self.root)
+        self.target_combo.configure(postcommand=self.target_combo.configure(values=self.get_language_list()))
 
         self.horizontal_separator = tkinter.ttk.Separator(self.root, orient="horizontal")
 
@@ -54,7 +52,7 @@ class TranslationApp:
 
         current_row += 1
         self.origin_label.grid(padx=10, pady=10, row=current_row, column=0, sticky="W")
-        self.origin_dropdown.grid(padx=10, row=current_row, column=1, columnspan=2, sticky="E", pady=5)
+        self.origin_combo.grid(padx=10, row=current_row, column=1, columnspan=2, sticky="E", pady=5)
 
         current_row += 1
         self.horizontal_separator.grid(padx=10, row=current_row, column=0, columnspan=3, sticky="EW")
@@ -68,7 +66,7 @@ class TranslationApp:
 
         current_row += 1
         self.target_label.grid(padx=10, pady=10, row=current_row, column=0, sticky="W")
-        self.target_dropdown.grid(padx=10, row=current_row, column=1, columnspan=2, sticky="E", pady=5)
+        self.target_combo.grid(padx=10, row=current_row, column=1, columnspan=2, sticky="E", pady=5)
 
         current_row += 1
         self.translate_button.grid(padx=10, row=current_row, column=2, sticky="W", pady=5)
@@ -95,19 +93,9 @@ class TranslationApp:
     def translate_powerpoint_file(self, output, original_language, translated_language):
         pass
 
-
-class DynamicCombobox(tkinter.ttk.Combobox):
-    def __init__(self, main_app, parent_combobox=None, **kwargs):
-        self.main_app = main_app
-        self.parent_combobox = parent_combobox
-        tkinter.ttk.Combobox.__init__(self, main_app, postcommand=self.update_combobox_values())
-
-    def update_combobox_values(self):
-        if self.parent_combobox is not None:
-            language_code = self.parent_combobox.get(0, 2)
-        else:
-            language_code = None
-        language_list = self.main_app.translate_client.get_languages(language_code)
+    def get_language_list(self, language_code=None):
+        language_list = self.translate_client.get_languages(language_code)
+        screen_name_list = []
         for language in language_list:
-            language["screen_name"] = language.get("language") + " - " + language.get("name")
-        self["values"] = language_list["screen_name"]
+            screen_name_list.append(language.get("language") + " - " + language.get("name"))
+        return screen_name_list
