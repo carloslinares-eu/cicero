@@ -6,6 +6,7 @@ import tkinter.filedialog
 import google.oauth2.service_account
 import google.cloud.translate_v2
 import google.auth.exceptions
+import pptx
 
 
 class TranslationApp:
@@ -14,7 +15,7 @@ class TranslationApp:
         self.translate_client = google.cloud.translate_v2.Client(credentials=self.credentials)
         self.root = tkinter.Tk()
         self.root.title("CICERO - Powerpoint Translator App")
-        self.root.geometry("500x400")
+        self.root.geometry("500x260")
         self.root.resizable(0, 0)
         self.root.iconbitmap("resources/cicero.ico")
         self.large = ("Segoe UI", 10)
@@ -77,8 +78,9 @@ class TranslationApp:
         powerpoint_extension = (("Powerpoint presentation", "*.pptx"), ("All files", "*.*"))
         prompt_title = "Open Powerpoint presentation"
         path_to_file = tkinter.filedialog.askopenfile(filetypes=powerpoint_extension, title=prompt_title)
-        self.input_entry.delete(0, 'end')
-        self.input_entry.insert(0, path_to_file.name)
+        if path_to_file is not None:
+            self.input_entry.delete(0, 'end')
+            self.input_entry.insert(0, path_to_file.name)
 
     def set_output(self):
         powerpoint_extension = (("Powerpoint presentation", "*.pptx"), ("All files", "*.*"))
@@ -87,15 +89,39 @@ class TranslationApp:
         self.output_entry.delete(0, 'end')
         self.output_entry.insert(0, path_to_file)
 
-    def get_origin_language(self):
-        pass
-
-    def translate_powerpoint_file(self, output, original_language, translated_language):
-        pass
-
     def get_language_list(self, language_code=None):
         language_list = self.translate_client.get_languages(language_code)
         screen_name_list = []
         for language in language_list:
             screen_name_list.append(language.get("language") + " - " + language.get("name"))
         return screen_name_list
+
+    def translate_powerpoint_file(self):
+        source_file_path = self.input_entry.get()
+        destination_file_path = self.output_entry.get()
+        target_lang = self.target_combo.get()[0:2]
+        active_presentation = None
+        try:
+            active_presentation = pptx.Presentation(source_file_path)
+        except pptx.exc.PackageNotFoundError:
+            refresh_error_message = "Failed to open the Powerpoint file"
+            tkinter.messagebox.showerror(title="Critical error", message=refresh_error_message)
+
+        for slide in active_presentation.slides:
+            input_text = slide.notes_slide.notes_text_frame.text
+            translation = self.translate_client.translate(input_text, target_language=target_lang)
+            slide.notes_slide.notes_text_frame.text = translation["translatedText"]
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    for paragraph in shape.text_frame.paragraphs:
+                        translation = self.translate_client.translate(paragraph.text, target_language=target_lang)
+                        paragraph.text = translation["translatedText"]
+                elif shape.has_table:
+                    for cell in shape.table.iter_cells():
+                        for paragraph in cell.text_frame.paragraphs:
+                            translation = self.translate_client.translate(paragraph.text, target_language=target_lang)
+                            paragraph.text = translation["translatedText"]
+                else:
+                    continue
+
+        active_presentation.save(destination_file_path)
