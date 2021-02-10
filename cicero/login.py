@@ -36,8 +36,9 @@ class LoginApp:
     def browse_service_account_file(self):
         prompt_title = "Open License File"
         license_file = tkinter.filedialog.askopenfile(filetypes=self.valid_license_filetypes, title=prompt_title)
-        self.license_entry.delete(0, 'end')
-        self.license_entry.insert(0, license_file.name)
+        if license_file is not None:
+            self.license_entry.delete(0, 'end')
+            self.license_entry.insert(0, license_file.name)
 
     def load_service_account_file(self):
         file = self.license_entry.get()
