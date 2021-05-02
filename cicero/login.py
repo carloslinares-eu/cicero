@@ -12,7 +12,7 @@ class LoginApp:
         self.root.title("CICERO - Login")
         self.root.geometry("400x120")
         self.root.resizable(0, 0)
-        self.root.iconbitmap("resources/cicero.ico")
+        self.root.iconbitmap("cicero/resources/cicero.ico")
         self.text_format_01 = ("Segoe UI", 10)
 
         self.license_label = tkinter.Label(self.root, text="Select License File", anchor="w", font=self.text_format_01)

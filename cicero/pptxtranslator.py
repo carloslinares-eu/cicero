@@ -17,7 +17,7 @@ class TranslationApp:
         self.root.title("CICERO - Powerpoint Translator App")
         self.root.geometry("500x260")
         self.root.resizable(0, 0)
-        self.root.iconbitmap("resources/cicero.ico")
+        self.root.iconbitmap("cicero/resources/cicero.ico")
         self.large = ("Segoe UI", 10)
         self.medium = ("Segoe UI", 8)
         self.small = ("Segoe UI", 6)
