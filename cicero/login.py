@@ -7,12 +7,13 @@ import google.auth.exceptions
 
 
 class LoginApp:
-    def __init__(self):
+    def __init__(self, icon_path):
+        self.icon = icon_path
         self.root = tkinter.Tk()
         self.root.title("CICERO - Login")
         self.root.geometry("400x120")
         self.root.resizable(0, 0)
-        self.root.iconbitmap("cicero/resources/cicero.ico")
+        self.root.iconbitmap(self.icon)
         self.text_format_01 = ("Segoe UI", 10)
 
         self.license_label = tkinter.Label(self.root, text="Select License File", anchor="w", font=self.text_format_01)

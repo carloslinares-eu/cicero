@@ -10,14 +10,15 @@ import pptx
 
 
 class TranslationApp:
-    def __init__(self, credentials=None):
+    def __init__(self, icon_path, credentials=None):
         self.credentials = credentials
+        self.icon = icon_path
         self.translate_client = google.cloud.translate_v2.Client(credentials=self.credentials)
         self.root = tkinter.Tk()
         self.root.title("CICERO - Powerpoint Translator App")
         self.root.geometry("500x260")
         self.root.resizable(0, 0)
-        self.root.iconbitmap("cicero/resources/cicero.ico")
+        self.root.iconbitmap(self.icon)
         self.large = ("Segoe UI", 10)
         self.medium = ("Segoe UI", 8)
         self.small = ("Segoe UI", 6)
@@ -87,6 +88,8 @@ class TranslationApp:
         prompt_title = "Save Powerpoint presentation"
         path_to_file = tkinter.filedialog.asksaveasfilename(filetypes=powerpoint_extension, title=prompt_title)
         self.output_entry.delete(0, 'end')
+        if path_to_file[-5:] != ".pptx":
+            path_to_file += ".pptx"
         self.output_entry.insert(0, path_to_file)
 
     def get_language_list(self, language_code=None):
@@ -125,3 +128,4 @@ class TranslationApp:
                     continue
 
         active_presentation.save(destination_file_path)
+        tkinter.messagebox.showinfo(title="Job finished", message="The file has been successfully translated")
