@@ -1,5 +1,5 @@
 from cicero.login import LoginApp
-from cicero.translator import TranslationApp
+from cicero.cicero import TranslationApp
 import os
 
 
