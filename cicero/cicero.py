@@ -15,7 +15,7 @@ class TranslationApp:
         self.icon = icon_path
         self.translate_client = google.cloud.translate_v2.Client(credentials=self.credentials)
         self.root = tkinter.Tk()
-        self.root.title("CICERO - Powerpoint Translator App")
+        self.root.title("CICERO - Universal Translator App")
         self.root.geometry("500x260")
         self.root.resizable(0, 0)
         self.root.iconbitmap(self.icon)
@@ -23,6 +23,10 @@ class TranslationApp:
         self.medium = ("Segoe UI", 8)
         self.small = ("Segoe UI", 6)
         self.main_width = 60
+        self.compatible_files = (("Powerpoint presentation", "*.pptx"), ("PDF file", "*.pdf"))
+        self.path_to_input = None
+        self.path_to_output = None
+        self.file_type = None
 
         self.input_label = tkinter.Label(self.root, text="Input file", anchor="w", font=self.large)
         self.input_entry = tkinter.Entry(self.root, font=self.large, width=54)
@@ -76,21 +80,38 @@ class TranslationApp:
         self.root.mainloop()
 
     def set_input(self):
-        powerpoint_extension = (("Powerpoint presentation", "*.pptx"), ("All files", "*.*"))
-        prompt_title = "Open Powerpoint presentation"
-        path_to_file = tkinter.filedialog.askopenfile(filetypes=powerpoint_extension, title=prompt_title)
-        if path_to_file is not None:
+        prompt_title = "Open file to translate"
+        self.path_to_input = tkinter.filedialog.askopenfile(filetypes=self.compatible_files, title=prompt_title)
+
+        if self.path_to_input is not None:
             self.input_entry.delete(0, 'end')
-            self.input_entry.insert(0, path_to_file.name)
+
+        self.input_entry.insert(0, self.path_to_input.name)
+
+        self.set_file_type()
+
+    def set_file_type(self):
+        self.file_type = None
+        if self.path_to_input.name[-5:] == ".pptx":
+            self.file_type = {("Powerpoint presentation", "*.pptx")}
+        elif self.path_to_input.name[-4:] == ".pdf":
+            self.file_type = {("PDF file", "*.pdf")}
 
     def set_output(self):
-        powerpoint_extension = (("Powerpoint presentation", "*.pptx"), ("All files", "*.*"))
-        prompt_title = "Save Powerpoint presentation"
-        path_to_file = tkinter.filedialog.asksaveasfilename(filetypes=powerpoint_extension, title=prompt_title)
-        self.output_entry.delete(0, 'end')
-        if path_to_file[-5:] != ".pptx":
-            path_to_file += ".pptx"
-        self.output_entry.insert(0, path_to_file)
+        prompt_title = "Save translated file to:"
+        self.path_to_output = tkinter.filedialog.asksaveasfilename(filetypes=self.file_type, title=prompt_title)
+
+        if self.path_to_input is not None:
+            self.output_entry.delete(0, 'end')
+
+        self.complete_output_path()
+        self.output_entry.insert(0, self.path_to_output)
+
+    def complete_output_path(self):
+        if (self.file_type == {("Powerpoint presentation", "*.pptx")}) & (self.path_to_output[-5:] != ".pptx"):
+            self.path_to_output += ".pptx"
+        elif (self.file_type == {("PDF file", "*.pdf")}) & (self.path_to_output[-4:] != ".pdf"):
+            self.path_to_output += ".pdf"
 
     def get_language_list(self, language_code=None):
         language_list = self.translate_client.get_languages(language_code)
