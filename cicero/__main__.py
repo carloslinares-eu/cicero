@@ -1,5 +1,5 @@
 from cicero.login import LoginApp
-from cicero.pptxtranslator import TranslationApp
+from cicero.translator import TranslationApp
 import os
 
 
