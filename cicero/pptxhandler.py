@@ -56,5 +56,3 @@ def update_text_of_shapes(source_file_path, destination_file_path, source_text):
                 paragraph.text = source_text
 
     active_presentation.save(destination_file_path)
-
-
