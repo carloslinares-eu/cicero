@@ -1,3 +1,4 @@
+import cicero.config
 from cicero.login import LoginApp
 from cicero.cicero import TranslationApp
 import os
@@ -14,8 +15,8 @@ def main():
     cicero_login_app = LoginApp(icon_path)
     cicero_login_app.initialize()
 
-    if cicero_login_app.has_logged_in is True:
-        main_translation_app = TranslationApp(icon_path, credentials=cicero_login_app.credentials)
+    if cicero.config.has_logged_in is True:
+        main_translation_app = TranslationApp(icon_path, credentials=cicero.config.gcloud_credentials)
         main_translation_app.initialize()
 
 
