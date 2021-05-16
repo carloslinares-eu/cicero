@@ -1,3 +1,6 @@
+import cicero.config as cfg
+import cicero.pptxhandler
+import cicero.translator
 import tkinter
 import tkinter.messagebox
 import tkinter.scrolledtext
@@ -6,7 +9,6 @@ import tkinter.filedialog
 import google.oauth2.service_account
 import google.cloud.translate_v2
 import google.auth.exceptions
-import pptx
 
 
 class TranslationApp:
@@ -27,6 +29,9 @@ class TranslationApp:
         self.path_to_input = None
         self.path_to_output = None
         self.file_type = None
+        self.input_language = None
+        self.target_language = None
+        self.temp_file = None
 
         self.input_label = tkinter.Label(self.root, text="Input file", anchor="w", font=self.large)
         self.input_entry = tkinter.Entry(self.root, font=self.large, width=54)
@@ -46,7 +51,7 @@ class TranslationApp:
         self.output_entry = tkinter.Entry(self.root, font=self.large, width=54)
         self.save_button = tkinter.ttk.Button(self.root, text="Save", command=self.set_output)
 
-        self.translate_button = tkinter.ttk.Button(self.root, text="Translate!", command=self.translate_powerpoint_file)
+        self.translate_button = tkinter.ttk.Button(self.root, text="Translate!", command=self.translate_file)
 
     def initialize(self):
         current_row = 0
@@ -81,7 +86,11 @@ class TranslationApp:
 
     def set_input(self):
         prompt_title = "Open file to translate"
-        self.path_to_input = tkinter.filedialog.askopenfile(filetypes=self.compatible_files, title=prompt_title)
+
+        try:
+            self.path_to_input = tkinter.filedialog.askopenfile(filetypes=self.compatible_files, title=prompt_title)
+        except PermissionError:
+            tkinter.messagebox.showerror(title="Critical error", message="Can't access the file. It might be open by other application")
 
         if self.path_to_input is not None:
             self.input_entry.delete(0, 'end')
@@ -120,33 +129,35 @@ class TranslationApp:
             screen_name_list.append(language.get("language") + " - " + language.get("name"))
         return screen_name_list
 
+    def translate_file(self):
+        self.load_values_from_gui()
+        cfg.text_repository_file_path = self.path_to_output + ".txt"
+        cfg.text_repository_file = open(cfg.text_repository_file_path, "w+")
+        cfg.text_repository_file.write("slide" + "\t" + "id" + "\t" + "text" + "\n")
+
+        if self.file_type == {("Powerpoint presentation", "*.pptx")}:
+            self.translate_powerpoint_file()
+        elif self.file_type == {("PDF file", "*.pdf")}:
+            self.translate_pdf_file()
+        else:
+            tkinter.messagebox.showerror(title="Critical error", message="Can't perform operation: invalid file type")
+            return
+
     def translate_powerpoint_file(self):
-        source_file_path = self.input_entry.get()
-        destination_file_path = self.output_entry.get()
-        target_lang = self.target_combo.get()[0:2]
-        active_presentation = None
-        try:
-            active_presentation = pptx.Presentation(source_file_path)
-        except pptx.exc.PackageNotFoundError:
-            refresh_error_message = "Failed to open the Powerpoint file"
-            tkinter.messagebox.showerror(title="Critical error", message=refresh_error_message)
-
-        for slide in active_presentation.slides:
-            input_text = slide.notes_slide.notes_text_frame.text
-            translation = self.translate_client.translate(input_text, target_language=target_lang)
-            slide.notes_slide.notes_text_frame.text = translation["translatedText"]
-            for shape in slide.shapes:
-                if shape.has_text_frame:
-                    for paragraph in shape.text_frame.paragraphs:
-                        translation = self.translate_client.translate(paragraph.text, target_language=target_lang)
-                        paragraph.text = translation["translatedText"]
-                elif shape.has_table:
-                    for cell in shape.table.iter_cells():
-                        for paragraph in cell.text_frame.paragraphs:
-                            translation = self.translate_client.translate(paragraph.text, target_language=target_lang)
-                            paragraph.text = translation["translatedText"]
-                else:
-                    continue
-
-        active_presentation.save(destination_file_path)
+        cfg.active_presentation = cicero.pptxhandler.open_powerpoint_file(self.path_to_input)
+        cicero.pptxhandler.extract_text_from_powerpoint(cfg.active_presentation)
+        cicero.translator.read_and_group_input_string(cfg.text_repository_file_path)
+        cfg.active_presentation.save(self.path_to_output)
         tkinter.messagebox.showinfo(title="Job finished", message="The file has been successfully translated")
+
+    def translate_pdf_file(self):
+        return 0
+
+    def load_values_from_gui(self):
+        self.path_to_input = self.input_entry.get()
+        self.path_to_output = self.output_entry.get()
+        self.input_language = self.origin_combo.get()[0:2]
+        self.target_language = self.target_combo.get()[0:2]
+        cfg.input_language = self.input_language
+        cfg.target_language = self.target_language
+
