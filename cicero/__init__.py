@@ -1,1 +1,1 @@
-import cicero.config
+import cicero.cfg
