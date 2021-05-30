@@ -1,6 +1,8 @@
-import cicero.config as cfg
-import cicero.pptxhandler
-import cicero.translator
+import cicero.cfg as cfg
+import cicero.pptxhandler as pptx_handler
+import cicero.pdfhandler as pdf_handler
+import cicero.csvhandler as csv_handler
+import cicero.translator as translator
 import tkinter
 import tkinter.messagebox
 import tkinter.scrolledtext
@@ -90,7 +92,7 @@ class TranslationApp:
         try:
             self.path_to_input = tkinter.filedialog.askopenfile(filetypes=self.compatible_files, title=prompt_title)
         except PermissionError:
-            tkinter.messagebox.showerror(title="Critical error", message="Can't access the file. It might be open by other application")
+            tkinter.messagebox.showerror(title="Critical error", message=cfg.error_msg_access)
 
         if self.path_to_input is not None:
             self.input_entry.delete(0, 'end')
@@ -131,9 +133,8 @@ class TranslationApp:
 
     def translate_file(self):
         self.load_values_from_gui()
-        cfg.text_repository_file_path = self.path_to_output + ".txt"
-        cfg.text_repository_file = open(cfg.text_repository_file_path, "w+")
-        cfg.text_repository_file.write("slide" + "\t" + "id" + "\t" + "text" + "\n")
+        cfg.text_repository_file_path = self.path_to_output + ".csv"
+        csv_handler.create_repository_file(cfg.text_repository_file_path)
 
         if self.file_type == {("Powerpoint presentation", "*.pptx")}:
             self.translate_powerpoint_file()
@@ -144,14 +145,19 @@ class TranslationApp:
             return
 
     def translate_powerpoint_file(self):
-        cfg.active_presentation = cicero.pptxhandler.open_powerpoint_file(self.path_to_input)
-        cicero.pptxhandler.extract_text_from_powerpoint(cfg.active_presentation)
-        cicero.translator.read_and_group_input_string(cfg.text_repository_file_path)
-        cfg.active_presentation.save(self.path_to_output)
+        cfg.input_pptx_file = pptx_handler.open_powerpoint_file(self.path_to_input)
+        pptx_handler.extract_text_from_powerpoint(cfg.input_pptx_file)
+        extract_result = csv_handler.read_and_group_from_repository(cfg.text_repository_file_path)
+        for list_of_strings in extract_result:
+            list_of_strings["translated_text"] = translator.translate_text_gcloud(list_of_strings["input_text"],
+                                                                                  cfg.target_language)
+        csv_handler.update_repository_with_translation(cfg.text_repository_file_path)
+        pptx_handler.replace_text_with_translation(cfg.input_pptx_file)
+        cfg.input_pptx_file.save(self.path_to_output)
         tkinter.messagebox.showinfo(title="Job finished", message="The file has been successfully translated")
 
     def translate_pdf_file(self):
-        return 0
+        cfg.input_pdf_file = pdf_handler.open_pdf_file(self.path_to_input)
 
     def load_values_from_gui(self):
         self.path_to_input = self.input_entry.get()
@@ -160,4 +166,3 @@ class TranslationApp:
         self.target_language = self.target_combo.get()[0:2]
         cfg.input_language = self.input_language
         cfg.target_language = self.target_language
-
