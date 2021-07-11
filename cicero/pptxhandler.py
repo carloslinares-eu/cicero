@@ -49,12 +49,13 @@ def extract_text_from_tables(slide):
 
 def extract_paragraphs_from_shapes(slide, shape_text_frame):
     for paragraph in shape_text_frame.paragraphs:
-        inline_dictionary = {"slide_id": slide.slide_id, "element_id": cfg.element_id,
-                             "encoded": str(False), "text": paragraph.text, "font_name": "Not acquired",
-                             "font_size": "Not acquired", "font_color": "Not acquired",
-                             "translation": "Pending"}
-        csv_handler.write_line_to_repository(cfg.text_repository_file_path, inline_dictionary)
-        cfg.element_id += 1
+        for run in paragraph.runs:
+            inline_dictionary = {"slide_id": slide.slide_id, "element_id": cfg.element_id,
+                                 "encoded": str(False), "text": run.text, "font_name": run.font.name,
+                                 "font_size": run.font.size, "font_color": "N/A",
+                                 "translation": "Pending"}
+            csv_handler.write_line_to_repository(cfg.text_repository_file_path, inline_dictionary)
+            cfg.element_id += 1
 
 
 def replace_text_with_translation(active_presentation):
@@ -91,8 +92,10 @@ def replace_tables_with_translation():
 
 def replace_paragraphs_with_translation(shape_text_frame):
     for paragraph in shape_text_frame.paragraphs:
-        # if cfg.repository_content[cfg.element_id]["encoded"] == "True":
-        #    string_to_decode = cfg.repository_content[cfg.element_id]["translation"]
-        #    cfg.repository_content[cfg.element_id].update({"translation": string_to_decode.decode("utf-8")})
-        paragraph.text = cfg.repository_content[cfg.element_id]["translation"]
-        cfg.element_id += 1
+        for run in paragraph.runs:
+            run.text = cfg.repository_content[cfg.element_id]["translation"]
+            if cfg.repository_content[cfg.element_id]["font_name"] != "":
+                run.font.name = cfg.repository_content[cfg.element_id]["font_name"]
+            if cfg.repository_content[cfg.element_id]["font_size"] != "":
+                run.font.size = int(cfg.repository_content[cfg.element_id]["font_size"])
+            cfg.element_id += 1
