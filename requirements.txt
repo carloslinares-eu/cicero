@@ -30,3 +30,5 @@ XlsxWriter==1.4.0
 pyinstaller~=4.3
 future~=0.18.2
 setuptools~=53.0.0
+PyPDF4~=1.27.0
+pandas~=1.2.4

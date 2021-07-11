@@ -1,6 +1,5 @@
 import setuptools
 
-
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
@@ -21,8 +20,8 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
-            "google.oauth2", "google.cloud.translate_v2", "google.auth", "pptx", "tkinter", "tkinter.ttk", "xlsxwriter"
-        ],
+        "google.oauth2", "google.cloud.translate_v2", "google.auth", "python-pptx", "tkinter", "tkinter.ttk",
+        "xlsxwriter"],
     entry_points={"console_scripts": ["cicero=cicero.__main__:main"]},
     python_requires='>=3.8',
 )
