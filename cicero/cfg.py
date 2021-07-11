@@ -15,3 +15,4 @@ current_slide = 0
 repository_field_names = ["slide_id", "element_id", "encoded", "text", "font_name", "font_size", "font_color",
                           "translation"]
 repository_content = []
+single_list_output = []

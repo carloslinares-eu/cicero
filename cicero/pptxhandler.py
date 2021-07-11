@@ -91,7 +91,8 @@ def replace_tables_with_translation():
 
 def replace_paragraphs_with_translation(shape_text_frame):
     for paragraph in shape_text_frame.paragraphs:
-        if cfg.repository_content[cfg.element_id]["encoded"] is True:
-            cfg.repository_content[cfg.element_id]["translation"].decode("utf-8")
+        # if cfg.repository_content[cfg.element_id]["encoded"] == "True":
+        #    string_to_decode = cfg.repository_content[cfg.element_id]["translation"]
+        #    cfg.repository_content[cfg.element_id].update({"translation": string_to_decode.decode("utf-8")})
         paragraph.text = cfg.repository_content[cfg.element_id]["translation"]
         cfg.element_id += 1

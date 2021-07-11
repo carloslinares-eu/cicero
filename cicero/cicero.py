@@ -151,8 +151,8 @@ class TranslationApp:
         for group in grouped_strings:
             translated_group = translator.translate_text_gcloud(group["input_text"], cfg.target_language)
             group["output_text"] = translated_group
-        single_list_output = csv_handler.ungroup_output(grouped_strings, "output_text")
-        csv_handler.update_repository_with_translation(cfg.text_repository_file_path, single_list_output)
+        cfg.single_list_output = csv_handler.ungroup_output(grouped_strings, "output_text")
+        csv_handler.update_repository_with_translation(cfg.text_repository_file_path, cfg.single_list_output)
         cfg.repository_content = csv_handler.load_repository_to_list_of_dictionaries(cfg.text_repository_file_path)
         pptx_handler.replace_text_with_translation(cfg.input_pptx_file)
         cfg.input_pptx_file.save(self.path_to_output)
