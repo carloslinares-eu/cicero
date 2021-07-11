@@ -3,13 +3,13 @@ import csv
 
 
 def create_repository_file(path_to_repository):
-    with open(path_to_repository, mode="w", newline='') as repository_file:
+    with open(path_to_repository, mode="w", newline='', encoding="utf8") as repository_file:
         repository_writer = csv.DictWriter(repository_file, fieldnames=cfg.repository_field_names)
         repository_writer.writeheader()
 
 
 def write_line_to_repository(path_to_repository, line):
-    with open(path_to_repository, mode="a", newline='') as repository_file:
+    with open(path_to_repository, mode="a", newline='', encoding="utf8") as repository_file:
         repository_writer = csv.DictWriter(repository_file, fieldnames=cfg.repository_field_names, delimiter=',',
                                            quotechar='"', quoting=csv.QUOTE_MINIMAL)
         try:
@@ -22,7 +22,7 @@ def write_line_to_repository(path_to_repository, line):
 
 
 def load_and_group_from_repository(path_to_repository):
-    with open(path_to_repository, 'r', newline='') as repository_file:
+    with open(path_to_repository, 'r', newline='', encoding="utf8") as repository_file:
         repository_reader = csv.DictReader(repository_file, delimiter=',', quotechar='"')
         list_id = 0
         input_list = [{"list_id": list_id, "input_text": []}]
@@ -52,10 +52,8 @@ def ungroup_output(grouped_strings, key):
 
 
 def update_repository_with_translation(path_to_repository, output_list):
-    with open(path_to_repository, mode="r", newline='') as repository_file:
+    with open(path_to_repository, mode="r", newline='', encoding="utf8") as repository_file:
         repository_reader = csv.DictReader(repository_file, delimiter=',', quotechar='"')
-        repository_writer = csv.DictWriter(repository_file, fieldnames=cfg.repository_field_names, delimiter=',',
-                                           quotechar='"', quoting=csv.QUOTE_MINIMAL)
         updated_row = []
         id_count = 0
         for row in repository_reader:
@@ -69,7 +67,7 @@ def update_repository_with_translation(path_to_repository, output_list):
                                 "translation": output_list[id_count]})
             id_count += 1
 
-    with open(path_to_repository, mode="w", newline='') as repository_file:
+    with open(path_to_repository, mode="w", newline='', encoding="utf8") as repository_file:
         repository_writer = csv.DictWriter(repository_file, fieldnames=cfg.repository_field_names, delimiter=',',
                                            quotechar='"', quoting=csv.QUOTE_MINIMAL)
         repository_writer.writeheader()
@@ -83,7 +81,7 @@ def update_repository_with_translation(path_to_repository, output_list):
 
 
 def load_repository_to_list_of_dictionaries(path_to_repository):
-    with open(path_to_repository, mode="r", newline='') as repository_file:
+    with open(path_to_repository, mode="r", newline='', encoding="utf8") as repository_file:
         repository_reader = csv.DictReader(repository_file, delimiter=',', quotechar='"')
         repository_content = []
         for row in repository_reader:
