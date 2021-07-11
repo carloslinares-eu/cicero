@@ -146,12 +146,14 @@ class TranslationApp:
 
     def translate_powerpoint_file(self):
         cfg.input_pptx_file = pptx_handler.open_powerpoint_file(self.path_to_input)
-        pptx_handler.extract_text_from_powerpoint(cfg.input_pptx_file)
-        extract_result = csv_handler.read_and_group_from_repository(cfg.text_repository_file_path)
-        for list_of_strings in extract_result:
-            list_of_strings["translated_text"] = translator.translate_text_gcloud(list_of_strings["input_text"],
-                                                                                  cfg.target_language)
-        csv_handler.update_repository_with_translation(cfg.text_repository_file_path)
+        pptx_handler.extract_text_from_powerpoint_and_write_csv(cfg.input_pptx_file)
+        grouped_strings = csv_handler.load_and_group_from_repository(cfg.text_repository_file_path)
+        for group in grouped_strings:
+            translated_group = translator.translate_text_gcloud(group["input_text"], cfg.target_language)
+            group["output_text"] = translated_group
+        single_list_output = csv_handler.ungroup_output(grouped_strings, "output_text")
+        csv_handler.update_repository_with_translation(cfg.text_repository_file_path, single_list_output)
+        cfg.repository_content = csv_handler.load_repository_to_list_of_dictionaries(cfg.text_repository_file_path)
         pptx_handler.replace_text_with_translation(cfg.input_pptx_file)
         cfg.input_pptx_file.save(self.path_to_output)
         tkinter.messagebox.showinfo(title="Job finished", message="The file has been successfully translated")

@@ -15,7 +15,7 @@ def open_powerpoint_file(path_to_input):
         raise IOError
 
 
-def extract_text_from_powerpoint(active_presentation):
+def extract_text_from_powerpoint_and_write_csv(active_presentation):
     cfg.element_id = 0
     for cfg.current_slide in active_presentation.slides:
         extract_text_from_notes(cfg.current_slide)
@@ -54,4 +54,44 @@ def extract_paragraphs_from_shapes(slide, shape_text_frame):
                              "font_size": "Not acquired", "font_color": "Not acquired",
                              "translation": "Pending"}
         csv_handler.write_line_to_repository(cfg.text_repository_file_path, inline_dictionary)
+        cfg.element_id += 1
+
+
+def replace_text_with_translation(active_presentation):
+    cfg.element_id = 0
+    for cfg.current_slide in active_presentation.slides:
+        replace_notes_with_translation()
+        replace_simple_shapes_with_translation()
+        replace_complex_shapes_with_translation()
+        replace_tables_with_translation()
+
+
+def replace_notes_with_translation():
+    replace_paragraphs_with_translation(cfg.current_slide.notes_slide.notes_text_frame)
+
+
+def replace_simple_shapes_with_translation():
+    for shape in cfg.current_slide.shapes:
+        if shape.has_text_frame:
+            replace_paragraphs_with_translation(shape.text_frame)
+
+
+def replace_complex_shapes_with_translation():
+    for grouped_shape in cfg.current_slide.shapes:
+        if grouped_shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+            replace_simple_shapes_with_translation()
+
+
+def replace_tables_with_translation():
+    for shape in cfg.current_slide.shapes:
+        if shape.has_table:
+            for cell in shape.table.iter_cells():
+                replace_paragraphs_with_translation(cell)
+
+
+def replace_paragraphs_with_translation(shape_text_frame):
+    for paragraph in shape_text_frame.paragraphs:
+        if cfg.repository_content[cfg.element_id]["encoded"] is True:
+            cfg.repository_content[cfg.element_id]["translation"].decode("utf-8")
+        paragraph.text = cfg.repository_content[cfg.element_id]["translation"]
         cfg.element_id += 1
