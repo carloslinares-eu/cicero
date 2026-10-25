@@ -177,6 +177,7 @@ class TranslationJob:
         self._set_progress(Phase.SAVING, characters_done=total)
         document.save(options.output_path)
         result.output_path = options.output_path
+        result.warnings.extend(document.warnings)
         if options.write_review:
             review = review_path_for(options.output_path)
             try:

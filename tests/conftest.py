@@ -159,3 +159,26 @@ def sample_docx(tmp_path: Path) -> Path:
     path = tmp_path / "report.docx"
     document.save(path)
     return path
+
+
+@pytest.fixture
+def sample_pdf(tmp_path: Path) -> Path:
+    """Two pages: styled paragraphs, a hyphenated line break, numbers, an image, a drawn line, rotated text."""
+    import pymupdf
+
+    pdf = pymupdf.open()
+    page = pdf.new_page(width=595, height=842)
+    page.insert_text((72, 80), "Annual report", fontname="hebo", fontsize=20)
+    page.insert_text((72, 130), "Sales grew a lot in the north-", fontname="helv", fontsize=11)
+    page.insert_text((72, 144), "ern region this year.", fontname="helv", fontsize=11)
+    page.insert_text((72, 200), "Warning", fontname="hebo", fontsize=12, color=(1, 0, 0))
+    page.insert_text((72, 250), "2024 - 42 %", fontname="helv", fontsize=11)  # Base-14 fonts have no en dash
+    page.insert_text((500, 700), "Draft", fontname="helv", fontsize=11, rotate=90)
+    page.draw_line((72, 300), (520, 300), color=(0, 0, 1), width=2)
+    pixmap = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 8, 8), False)
+    pixmap.set_rect(pixmap.irect, (0, 128, 255))
+    page.insert_image(pymupdf.Rect(72, 320, 152, 400), pixmap=pixmap)
+    pdf.new_page().insert_text((72, 80), "Second page", fontname="tiro", fontsize=14)
+    path = tmp_path / "report.pdf"
+    pdf.save(path)
+    return path

@@ -20,6 +20,11 @@ All notable changes to this project are documented here. The format follows
 - Word documents (`.docx`): body text, tables (also nested), text boxes,
   headers, footers, footnotes, endnotes and comments, keeping run formatting,
   links and line breaks. ([#11](https://github.com/carloslinares-eu/cicero/issues/11))
+- PDF files: each block of text is replaced in place with its translation,
+  keeping font size, weight, style and colour, and leaving pictures and drawings
+  untouched. Longer translations use the free space around them before being
+  shrunk. Scanned and password-protected PDFs are explained.
+  ([#19](https://github.com/carloslinares-eu/cicero/issues/19))
 - Identical paragraphs, such as a footer repeated on every slide, are sent to
   Google once and the translation reused, which lowers the cost.
 - The progress bar ([#15](https://github.com/carloslinares-eu/cicero/issues/15))

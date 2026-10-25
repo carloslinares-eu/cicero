@@ -5,14 +5,14 @@
 <h1 align="center">Cicero</h1>
 
 <p align="center">
-  Translates PowerPoint presentations and Word documents with Google Cloud Translation, keeping their layout and formatting.
+  Translates PowerPoint presentations, Word documents and PDFs with Google Cloud Translation, keeping their layout and formatting.
 </p>
 
 <p align="center">
   <img src="docs/images/screenshot.png" width="640" alt="The Cicero window while translating">
 </p>
 
-Pick a `.pptx` presentation or a `.docx` Word document and a language. Cicero
+Pick a `.pptx` presentation, a `.docx` Word document or a `.pdf` and a language. Cicero
 finds the text on every slide or page (titles, text boxes, shapes inside groups,
 tables, SmartArt, speaker notes; in Word also headers, footers and footnotes),
 sends it to Google Cloud Translation and writes a translated copy next to the
@@ -30,6 +30,8 @@ changed.
   masters and layouts.
 - **Word documents too.** Body text, tables (including tables in tables), text
   boxes, headers, footers, footnotes, endnotes and comments.
+- **PDFs too.** Text is replaced where it stands, in the same font size, weight
+  and colour; pictures, drawings and backgrounds stay untouched.
 - **Repeated text is translated once.** A footer on every slide is sent to Google
   (and billed) only once.
 - **Any language Google supports** (about 190), with automatic detection of the
@@ -102,7 +104,7 @@ The last two also work straight from a checkout after `pip install -r requiremen
 
 1. Click **Browse…** next to **Key file** and choose your Google Cloud service
    account key (a `.json` file). Cicero connects and shows the project name.
-2. Click **Browse…** next to **Translate** and choose a `.pptx` or `.docx` file.
+2. Click **Browse…** next to **Translate** and choose a `.pptx`, `.docx` or `.pdf` file.
 3. Choose the language in **Into**. Leave **From** on *Detect automatically* or pick it.
 4. Check the **Save as** path (it defaults to `<name> (<language>).pptx` next to the original).
 5. Click **Translate**.
@@ -114,10 +116,10 @@ what is and isn't translated, and troubleshooting.
 
 | Step | What happens |
 |------|--------------|
-| 1. Reading | The file is searched for paragraphs with letters in them: on slides, shapes (including inside groups), table cells, SmartArt and notes; in Word, the body, tables, text boxes, headers, footers and notes. |
+| 1. Reading | The file is searched for paragraphs with letters in them: on slides, shapes (including inside groups), table cells, SmartArt and notes; in Word, the body, tables, text boxes, headers, footers and notes; in a PDF, each block of text. |
 | 2. Packing | Each paragraph's runs are wrapped in numbered `<span>` tags, so the translator sees one sentence but knows which words belonged to which run. |
 | 3. Translating | Each distinct paragraph is sent to Cloud Translation v3 once, in batches of up to 100 (10 000 characters). |
-| 4. Saving | Each translation is split back into its runs, keeping their formatting, and the copy is saved through a temporary file. |
+| 4. Saving | Each translation is split back into its runs, keeping their formatting (in a PDF, the original text is removed and the translation laid out in its place), and the copy is saved through a temporary file. |
 
 More detail is in [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -156,6 +158,7 @@ cicero-translator/
 │   │   ├── blocks.py        TextBlock and what all document types share
 │   │   ├── presentation.py  finding text in a .pptx (slides, SmartArt, masters)
 │   │   ├── word.py          finding text in a .docx
+│   │   ├── pdf.py           replacing text in a .pdf
 │   │   ├── segments.py      packing runs into HTML and unpacking the translation
 │   │   ├── translator.py    Google Cloud Translation v3 client, batching, error messages
 │   │   ├── credentials.py   service account keys and Application Default Credentials
@@ -178,3 +181,5 @@ cicero-translator/
 ## License
 
 Cicero is released under the [GNU General Public License v3.0](LICENSE).
+It uses [PyMuPDF](https://pymupdf.readthedocs.io/) for PDFs, which is licensed under the
+GNU AGPL v3.0; GPL-3.0 allows the two to be combined.

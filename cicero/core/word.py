@@ -40,6 +40,7 @@ class DocxDocument:
 
     def __init__(self, path: str | Path) -> None:
         self.document = open_word_document(path)
+        self.warnings: list[str] = []
         self._xml_parts: list[_StoryXml] = []
         self.blocks = self._collect()
 

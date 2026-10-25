@@ -27,7 +27,7 @@ log = logging.getLogger(__name__)
 POLL_MS = 100
 AUTOMATIC = "Detect automatically"
 KEY_FILE_TYPES = [("Google Cloud key file", "*.json"), ("All files", "*.*")]
-DOCUMENT_TYPES = [("Presentations and Word documents", " ".join(f"*{ext}" for ext in SUPPORTED))]
+DOCUMENT_TYPES = [("Presentations, Word documents and PDFs", " ".join(f"*{ext}" for ext in SUPPORTED))]
 DOCUMENT_TYPES += [(name, f"*{ext}") for ext, name in SUPPORTED.items()]
 
 
@@ -189,7 +189,7 @@ class MainWindow:
         self.connection_text.set(f"✔ Connected to project “{translator.account.project_id}” · "
                                  f"{len(languages)} languages")
         self.connection_label.configure(foreground="dark green")
-        self.status_text.set("Choose a presentation or Word document and the language to translate it into.")
+        self.status_text.set("Choose a presentation, Word document or PDF and the language to translate it into.")
         self.connect_button.state(["!disabled"])
         self.settings.key_file = key_file
         self.settings.save()
@@ -264,8 +264,8 @@ class MainWindow:
         if not source.is_file():
             return problem(f"The file to translate doesn't exist:\n{source}")
         if not is_supported(source):
-            return problem("Cicero translates PowerPoint .pptx and Word .docx files. Open older .ppt or .doc "
-                           "files in PowerPoint or Word and save them as .pptx or .docx first.")
+            return problem("Cicero translates PowerPoint .pptx, Word .docx and PDF files. Open older .ppt or "
+                           ".doc files in PowerPoint or Word and save them as .pptx or .docx first.")
         if self.target_box.code is None:
             return problem("Choose the language to translate into.")
         if not self.source_box.is_valid:
@@ -341,6 +341,9 @@ class MainWindow:
             lines.append(f"Review spreadsheet:\n{result.review_path}")
         if result.paragraphs == 0:
             lines.append("No text was found to translate, so the copy is identical to the original.")
+            if result.kind == "PDF":
+                lines.append("If the PDF is a scan (pictures of pages), its text can't be read. Run it through "
+                             "OCR first, for example with Adobe Acrobat or ocrmypdf.")
         lines.extend(result.warnings)
         if messagebox.askyesno(f"{__app_name__} - finished", "\n\n".join(lines) + "\n\nOpen it now?",
                                parent=self.root):

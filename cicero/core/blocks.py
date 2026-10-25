@@ -39,6 +39,7 @@ class Document(Protocol):
     unit: str | None  # what ``TextBlock.page`` counts ("slide", "page"), or None if nothing
     page_count: int
     blocks: list[TextBlock]
+    warnings: list[str]  # problems found while saving that didn't stop it
 
     def save(self, path: str | Path) -> None: ...
 

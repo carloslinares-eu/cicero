@@ -9,10 +9,11 @@ cicero/
 ├── app.py            main(): Windows DPI/taskbar setup, Tk root, icon, MainWindow
 ├── core/
 │   ├── job.py           TranslationJob: read → translate in batches → save; Progress, JobResult
-│   ├── documents.py     open_document(): picks the reader for .pptx / .docx
+│   ├── documents.py     open_document(): picks the reader for .pptx / .docx / .pdf
 │   ├── blocks.py        TextBlock, Document protocol, make_block(), apply(), save_atomically()
 │   ├── presentation.py  PptxDocument: slides, SmartArt, notes, masters
 │   ├── word.py          DocxDocument: body, tables, text boxes, headers/footers, notes, comments
+│   ├── pdf.py           PdfDocument: text blocks replaced in place with PyMuPDF
 │   ├── segments.py      encode_runs(), decode_runs(): runs ⇄ one HTML string
 │   ├── translator.py    Translator protocol, GoogleTranslator (v3), batches(), describe_error()
 │   ├── credentials.py   load_key_file(), load_default() → CloudAccount
@@ -50,6 +51,31 @@ python-docx's `Run.text` setter replaces everything in the run, so runs that als
 contain a picture, an embedded object, a field marker or a note reference are left
 out of the block and never written to. A text box is often stored twice (DrawingML
 and a VML fallback); deduplication sends its text once.
+
+### PDF
+
+`PdfDocument` uses [PyMuPDF](https://pymupdf.readthedocs.io/). For each page,
+`get_text("dict")` gives blocks → lines → spans with their font, size, flags and
+colour. A block is one paragraph; adjacent spans with the same style are merged
+into one `PdfSpan` (a plain object with a `text` attribute, so it works as a run),
+and lines are joined with a space, rejoining words hyphenated at a line end.
+Rotated blocks are skipped.
+
+Saving, page by page:
+
+1. A redaction annotation covers each translated block, and `apply_redactions`
+   removes the text under them while keeping images and line art
+   (`PDF_REDACT_IMAGE_NONE`, `PDF_REDACT_LINE_ART_NONE`).
+2. `insert_htmlbox` lays out the translation as HTML, one `<span>` per run with
+   its size, weight, style and colour, CSS generic family, the measured line
+   spacing, and centring when the original lines were centred. It shrinks the text
+   only if it can't fit (`scale_low=0`).
+3. `_layout_rect` first gives the text more room. It was measured before anything
+   was removed: every text block and image is an obstacle and every drawn rectangle
+   a possible frame. The box grows down, and right for a single left-aligned line,
+   up to the nearest obstacle, the frame it sits in or the page margin.
+
+Blocks that didn't fit even when shrunk are counted into `JobResult.warnings`.
 
 ## From slide to translation and back
 

@@ -11,6 +11,7 @@ from cicero.core.errors import DocumentError
 SUPPORTED = {
     ".pptx": "PowerPoint presentation",
     ".docx": "Word document",
+    ".pdf": "PDF document",
 }
 
 
@@ -29,6 +30,10 @@ def open_document(path: str | Path, include_masters: bool = False) -> Document:
         from cicero.core.word import DocxDocument
 
         return DocxDocument(path)
+    if suffix == ".pdf":
+        from cicero.core.pdf import PdfDocument
+
+        return PdfDocument(path)
     raise DocumentError(
         f"Cicero can't translate {suffix or 'this kind of'} files.\n\n"
         f"Supported: {', '.join(f'{name} ({ext})' for ext, name in SUPPORTED.items())}.\n"

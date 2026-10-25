@@ -35,6 +35,7 @@ class PptxDocument:
     def __init__(self, path: str | Path, include_masters: bool = False) -> None:
         self.presentation = open_presentation(path)
         self.include_masters = include_masters
+        self.warnings: list[str] = []
         self._xml_parts: list[_XmlBlob] = []  # parts python-pptx only knows as bytes (SmartArt)
         self.blocks = self._collect()
 

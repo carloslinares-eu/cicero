@@ -1,7 +1,7 @@
 # Cicero user guide
 
-Cicero makes a translated copy of a PowerPoint presentation (`.pptx`) or a Word
-document (`.docx`) using Google Cloud Translation. The original file is only ever
+Cicero makes a translated copy of a PowerPoint presentation (`.pptx`), a Word
+document (`.docx`) or a PDF using Google Cloud Translation. The original file is only ever
 **read**; the translation is saved as a new file.
 
 ## Setting up Google Cloud
@@ -58,7 +58,7 @@ never copies the key.
 
 ### Document
 
-- **Translate**: the `.pptx` or `.docx` file to translate. Older `.ppt` and `.doc`
+- **Translate**: the `.pptx`, `.docx` or `.pdf` file to translate. Older `.ppt` and `.doc`
   files must first be opened in PowerPoint or Word and saved as `.pptx` or `.docx`.
 - **From**: the language the presentation is written in. *Detect automatically*
   works well for most presentations; pick the language yourself if the slides are
@@ -68,7 +68,7 @@ never copies the key.
   Regional variants have their own entries, e.g. *Portuguese (Portugal) (pt-PT)*
   and *Chinese (Traditional) (zh-TW)*.
 - **Save as**: where to save the translation. It starts as
-  `<original name> (<language code>).pptx` (or `.docx`) in the same folder, and follows your
+  `<original name> (<language code>).pptx` (or `.docx`, `.pdf`) in the same folder, and follows your
   language choice until you choose another path yourself. It can't be the
   original file.
 - **Also save a review spreadsheet**: also writes a `.csv` file with the same name
@@ -81,8 +81,8 @@ never copies the key.
   while you edit (*Click to edit Master title style*, *Click to add text*). Turn
   this on when the presentation is a template, or when that shared text is in the
   original language. Their rows in the review spreadsheet have slide number 0 and
-  a location such as `Layout: Title Slide › Title 1`. Word documents have no
-  masters, so the option is greyed out for them.
+  a location such as `Layout: Title Slide › Title 1`. Word documents and PDFs have
+  no masters, so the option is greyed out for them.
 
 ### Translating
 
@@ -133,6 +133,33 @@ Word documents have no fixed pages (Word lays them out when it opens the file),
 so the status bar shows paragraphs and characters only, and the review
 spreadsheet has no page column; its *Location* says `Body`, `Body › Table`,
 `Header`, `Footnotes` and so on.
+
+### PDFs
+
+A PDF has no paragraphs or text boxes, only letters placed on the page. Cicero
+reads the text in blocks (roughly paragraphs), translates each block, removes the
+original letters and writes the translation in the same place:
+
+- Font size, bold, italic and colour are kept for each part of the block. The
+  typeface is replaced by a standard one of the same kind (sans-serif, serif or
+  monospaced), because PDFs usually contain only the letters their text uses.
+- Pictures, drawings, lines, backgrounds and shaded boxes are not touched.
+- Longer translations first use the free space to the right of one-line text and
+  below every block, without running into other text, pictures or out of a box the
+  text sits in. Only if that isn't enough is the text made smaller. If it still
+  doesn't fit, the end message says how many paragraphs may be cut off.
+- Words hyphenated at the end of a line are joined before translating.
+
+What isn't translated:
+
+- **Scanned PDFs** (pictures of pages) contain no text. Run them through OCR first,
+  for example with Adobe Acrobat or [ocrmypdf](https://ocrmypdf.readthedocs.io/).
+- Rotated or vertical text, text inside pictures, and form fields.
+- **Password-protected PDFs** can't be opened; remove the password first.
+
+The result is meant for reading. Complex layouts (several columns, text flowing
+around pictures) can look less tidy than the original; when you have the source
+document (Word or PowerPoint), translating that gives better results.
 
 ### Formatting
 
@@ -194,6 +221,12 @@ setting helps; otherwise check slides with tight text boxes afterwards.
 : It is probably in a chart, SmartArt, a picture or the slide master (see
   [What gets translated](#what-gets-translated)), or it was in a language Google
   didn't detect: set **From** explicitly.
+
+**"This PDF is password-protected"**
+: Open it in a PDF reader and save or print it to a new PDF without a password.
+
+**A translated PDF came out unchanged**
+: It is probably a scan. See [PDFs](#pdfs).
 
 **I see `.….cicero-partial` files**
 : They are left only if Cicero was killed while saving (for example from Task
