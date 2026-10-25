@@ -1,4 +1,4 @@
-"""Cicero: translate PowerPoint presentations with Google Cloud Translation, keeping their layout."""
+"""Cicero: translate PowerPoint presentations and Word documents with Google Cloud Translation."""
 
 __app_name__ = "Cicero"
 __version__ = "2.0.0"

@@ -10,7 +10,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from cicero.core.errors import CiceroError, OperationCancelled
-from cicero.core.presentation import PptxDocument, apply
+from cicero.core.blocks import apply
+from cicero.core.documents import open_document
 from cicero.core.review import review_path_for, write_review
 from cicero.core.translator import Translator, batches
 
@@ -42,8 +43,9 @@ class Progress:
     characters_total: int = 0
     paragraphs_done: int = 0
     paragraphs_total: int = 0
-    slide: int = 0  # slide the last translated paragraph is on
-    slides_total: int = 0
+    page: int = 0  # slide or page the last translated paragraph is on (0: masters, or no pages)
+    pages_total: int = 0
+    unit: str | None = None  # what pages are called: "slide", "page", or None for Word documents
     elapsed: float = 0.0  # seconds since the job started
     translating_for: float = 0.0  # seconds spent in the translating phase so far
 
@@ -68,7 +70,9 @@ class Progress:
 class JobResult:
     output_path: Path | None = None
     review_path: Path | None = None
-    slides: int = 0
+    kind: str = "document"
+    unit: str | None = None
+    pages: int = 0  # slides in a presentation, pages in a PDF, 0 for Word documents
     paragraphs: int = 0
     characters: int = 0  # characters sent to Google, which is what it bills for
     elapsed: float = 0.0
@@ -112,7 +116,7 @@ class TranslationJob:
             if phase is Phase.TRANSLATING and previous.phase is not Phase.TRANSLATING:
                 self._translating_since = now
             values = {name: getattr(previous, name) for name in (
-                "characters_done", "characters_total", "paragraphs_done", "paragraphs_total", "slide", "slides_total")}
+                "characters_done", "characters_total", "paragraphs_done", "paragraphs_total", "page", "pages_total", "unit")}
             values.update(counters)
             self._progress = Progress(
                 phase, **values, elapsed=now - self._started,
@@ -141,9 +145,9 @@ class TranslationJob:
     def _run(self, result: JobResult) -> None:
         options = self.options
         self._set_progress(Phase.READING)
-        document = PptxDocument(options.input_path, include_masters=options.include_masters)
+        document = open_document(options.input_path, include_masters=options.include_masters)
         blocks = document.blocks
-        result.slides = document.slide_count
+        result.kind, result.unit, result.pages = document.kind, document.unit, document.page_count
         result.paragraphs = len(blocks)
 
         # Identical paragraphs (a footer on every slide, SmartArt text that is also in its
@@ -155,7 +159,7 @@ class TranslationJob:
         total = sum(len(segment) for segment in segments)
         done = paragraphs_done = 0
         self._set_progress(Phase.TRANSLATING, characters_total=total, paragraphs_total=len(blocks),
-                           slides_total=result.slides)
+                           pages_total=result.pages, unit=result.unit)
         for indexes in batches(segments):
             self._check_cancelled()
             chunk = [segments[index] for index in indexes]
@@ -167,7 +171,7 @@ class TranslationJob:
             done += sum(len(segment) for segment in chunk)
             result.characters = done
             self._set_progress(Phase.TRANSLATING, characters_done=done, paragraphs_done=paragraphs_done,
-                               slide=blocks[owners[chunk[-1]][0]].slide)
+                               page=blocks[owners[chunk[-1]][0]].page)
 
         self._check_cancelled()
         self._set_progress(Phase.SAVING, characters_done=total)
@@ -176,7 +180,7 @@ class TranslationJob:
         if options.write_review:
             review = review_path_for(options.output_path)
             try:
-                write_review(review, blocks)
+                write_review(review, blocks, document.unit)
                 result.review_path = review
             except CiceroError as exc:  # the presentation itself was saved; don't report failure
                 result.warnings.append(str(exc))

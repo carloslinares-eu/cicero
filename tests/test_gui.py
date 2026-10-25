@@ -74,8 +74,19 @@ def test_status_bar_counters(window):
     from cicero.gui.main_window import format_duration
 
     window._render_counters(Progress(Phase.TRANSLATING, characters_done=1500, characters_total=6000,
-                                     paragraphs_done=40, paragraphs_total=160, slide=3, slides_total=12,
+                                     paragraphs_done=40, paragraphs_total=160, page=3, pages_total=12, unit="slide",
                                      elapsed=75, translating_for=30))
     assert [v.get() for v in window.counters.values()] == [
         "Slide 3 of 12", "Paragraph 40 of 160", "1,500 of 6,000 characters", "1:15 elapsed · about 1:30 left"]
     assert format_duration(3725) == "1:02:05"
+
+
+def test_word_documents_keep_their_extension_and_have_no_masters(window, fake_translator):
+    window.translator = fake_translator
+    window.target_box.set_languages(LANGUAGES)
+    window.target_box.set_code("es")
+    window.input_path.set(str(Path("C:/docs/Report.docx")))
+    assert window.output_path.get() == str(Path("C:/docs/Report (es).docx"))
+    assert window.masters_check.instate(["disabled"])
+    window.input_path.set(str(Path("C:/docs/Deck.pptx")))
+    assert not window.masters_check.instate(["disabled"])

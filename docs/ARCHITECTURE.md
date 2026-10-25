@@ -9,7 +9,10 @@ cicero/
 ├── app.py            main(): Windows DPI/taskbar setup, Tk root, icon, MainWindow
 ├── core/
 │   ├── job.py           TranslationJob: read → translate in batches → save; Progress, JobResult
-│   ├── presentation.py  PptxDocument: open, find paragraphs (incl. SmartArt), save; apply()
+│   ├── documents.py     open_document(): picks the reader for .pptx / .docx
+│   ├── blocks.py        TextBlock, Document protocol, make_block(), apply(), save_atomically()
+│   ├── presentation.py  PptxDocument: slides, SmartArt, notes, masters
+│   ├── word.py          DocxDocument: body, tables, text boxes, headers/footers, notes, comments
 │   ├── segments.py      encode_runs(), decode_runs(): runs ⇄ one HTML string
 │   ├── translator.py    Translator protocol, GoogleTranslator (v3), batches(), describe_error()
 │   ├── credentials.py   load_key_file(), load_default() → CloudAccount
@@ -21,6 +24,32 @@ cicero/
     ├── widgets.py       LanguageBox: combobox that filters as you type
     └── icon.py          window icon
 ```
+
+## Documents
+
+Every file type is read by a class that satisfies the `Document` protocol in
+`blocks.py`: `kind`, `unit` ("slide", or None for Word), `page_count`, `blocks` and
+`save(path)`. A `TextBlock` holds one paragraph's *runs*, and the only thing it
+needs from a run is a `text` attribute it can read and assign, which python-pptx
+and python-docx runs both have. Everything after reading (batching, translating,
+`apply`, the review spreadsheet) is the same for every type. `open_document`
+chooses the class from the file extension.
+
+### Word
+
+`DocxDocument` walks every `<w:p>` in the body and in each header, footer,
+footnotes, endnotes and comments part (found through the document part's
+relationships; parts python-docx keeps as bytes are parsed and written back like
+SmartArt). Walking the XML rather than python-docx's `document.paragraphs` also
+reaches tables inside tables and text boxes. Runs are taken from the paragraph,
+links (`w:hyperlink`), tracked insertions (`w:ins`), smart tags and content
+controls; `docx.text.run.Run` provides the text API, turning `w:tab` and `w:br`
+into `\t` and `\n` (which travel as `<span class="tab">` and `<br>`).
+
+python-docx's `Run.text` setter replaces everything in the run, so runs that also
+contain a picture, an embedded object, a field marker or a note reference are left
+out of the block and never written to. A text box is often stored twice (DrawingML
+and a VML fallback); deduplication sends its text once.
 
 ## From slide to translation and back
 

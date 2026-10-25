@@ -119,3 +119,43 @@ def smartart_deck(tmp_path: Path) -> Path:
     path = tmp_path / "smartart.pptx"
     deck.save(path)
     return path
+
+
+@pytest.fixture
+def sample_docx(tmp_path: Path) -> Path:
+    """A Word document with text in the places Cicero looks, and some it must leave alone."""
+    import docx
+    from docx.oxml import parse_xml
+    from docx.oxml.ns import nsdecls
+
+    document = docx.Document()
+    document.add_heading("Annual report", level=1)
+    paragraph = document.add_paragraph()
+    paragraph.add_run("Sales ")
+    paragraph.add_run("grew").bold = True
+    paragraph.add_run(" a lot")
+    lines = document.add_paragraph()
+    run = lines.add_run("Name:")
+    run.add_tab()
+    run.add_text("Carlos")
+    run.add_break()
+    run.add_text("Madrid")
+    document.add_paragraph("2024 – 42 %")
+    linked = document.add_paragraph("See ")
+    linked._p.append(parse_xml(f'<w:hyperlink {nsdecls("w", "r")} r:id="rIdX"><w:r><w:t>our website</w:t></w:r>'
+                               '</w:hyperlink>'))
+    document.add_paragraph("Page ")._p.append(parse_xml(  # a run with a picture must not be emptied
+        f'<w:r {nsdecls("w")}><w:t xml:space="preserve">with picture </w:t><w:drawing/></w:r>'))
+
+    table = document.add_table(rows=1, cols=2)
+    table.cell(0, 0).text = "Region"
+    inner = table.cell(0, 1).add_table(rows=1, cols=1)
+    inner.cell(0, 0).text = "Nested cell"
+
+    section = document.sections[0]
+    section.header.paragraphs[0].text = "Confidential"
+    section.footer.paragraphs[0].text = "Company name"
+
+    path = tmp_path / "report.docx"
+    document.save(path)
+    return path

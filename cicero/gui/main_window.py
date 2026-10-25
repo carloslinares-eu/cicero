@@ -15,6 +15,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from cicero import __app_name__
 from cicero.core.credentials import CloudAccount, load_default, load_key_file
+from cicero.core.documents import SUPPORTED, is_supported
 from cicero.core.errors import CiceroError
 from cicero.core.job import JobOptions, JobResult, Phase, Progress, TranslationJob
 from cicero.core.settings import Settings
@@ -26,7 +27,8 @@ log = logging.getLogger(__name__)
 POLL_MS = 100
 AUTOMATIC = "Detect automatically"
 KEY_FILE_TYPES = [("Google Cloud key file", "*.json"), ("All files", "*.*")]
-PRESENTATION_TYPES = [("PowerPoint presentation", "*.pptx")]
+DOCUMENT_TYPES = [("Presentations and Word documents", " ".join(f"*{ext}" for ext in SUPPORTED))]
+DOCUMENT_TYPES += [(name, f"*{ext}") for ext, name in SUPPORTED.items()]
 
 
 class MainWindow:
@@ -46,7 +48,7 @@ class MainWindow:
         self.include_masters = tk.BooleanVar(value=self.settings.include_masters)
         self.connection_text = tk.StringVar(value="Not connected")
         self.status_text = tk.StringVar(value="Choose your Google Cloud key file and connect.")
-        self.counters = {name: tk.StringVar() for name in ("slides", "paragraphs", "characters", "time")}
+        self.counters = {name: tk.StringVar() for name in ("pages", "paragraphs", "characters", "time")}
 
         self._build()
         self._update_buttons()
@@ -78,7 +80,7 @@ class MainWindow:
         self.connect_button = ttk.Button(cloud, text="Connect", command=self.connect)
         self.connect_button.grid(row=1, column=2, padx=(8, 0), pady=(8, 0), sticky="ew")
 
-        job = ttk.LabelFrame(outer, text="Presentation", padding=10)
+        job = ttk.LabelFrame(outer, text="Document", padding=10)
         job.grid(row=1, column=0, sticky="ew", pady=(10, 0))
         job.columnconfigure(1, weight=1)
         ttk.Label(job, text="Translate").grid(row=0, column=0, sticky="w", padx=(0, 8))
@@ -134,6 +136,7 @@ class MainWindow:
                 row=0, column=column, padx=(14, 0), sticky="e")
 
         self.input_path.trace_add("write", lambda *_: self._suggest_output())
+        self.input_path.trace_add("write", lambda *_: self._update_buttons())
         for variable in (self.input_path, self.output_path):
             variable.trace_add("write", lambda *_: self._update_buttons())
 
@@ -144,9 +147,10 @@ class MainWindow:
         self.translate_button.state(["!disabled"] if ready and not running else ["disabled"])
         self.stop_button.state(["!disabled"] if running else ["disabled"])
         for widget in (self.key_entry, self.key_browse, self.connect_button, self.input_entry, self.input_browse,
-                       self.output_entry, self.output_browse, self.source_box, self.target_box, self.review_check,
-                       self.masters_check):
+                       self.output_entry, self.output_browse, self.source_box, self.target_box, self.review_check):
             widget.state(["disabled"] if running else ["!disabled"])
+        is_presentation = self._input_suffix() in ("", ".pptx")  # masters only exist in presentations
+        self.masters_check.state(["!disabled"] if is_presentation and not running else ["disabled"])
 
     # ------------------------------------------------------------ connecting
 
@@ -185,7 +189,7 @@ class MainWindow:
         self.connection_text.set(f"✔ Connected to project “{translator.account.project_id}” · "
                                  f"{len(languages)} languages")
         self.connection_label.configure(foreground="dark green")
-        self.status_text.set("Choose a presentation and the language to translate it into.")
+        self.status_text.set("Choose a presentation or Word document and the language to translate it into.")
         self.connect_button.state(["!disabled"])
         self.settings.key_file = key_file
         self.settings.save()
@@ -214,8 +218,8 @@ class MainWindow:
             self.connect()
 
     def _browse_input(self) -> None:
-        path = filedialog.askopenfilename(parent=self.root, title="Presentation to translate",
-                                          filetypes=PRESENTATION_TYPES,
+        path = filedialog.askopenfilename(parent=self.root, title="Presentation or document to translate",
+                                          filetypes=DOCUMENT_TYPES,
                                           initialdir=self._initial_dir(self.input_path.get()))
         if path:
             self.input_path.set(os.path.normpath(path))
@@ -223,14 +227,19 @@ class MainWindow:
 
     def _browse_output(self) -> None:
         current = self.output_path.get().strip()
+        suffix = self._input_suffix()
+        types = [(SUPPORTED[suffix], f"*{suffix}")] if suffix in SUPPORTED else DOCUMENT_TYPES
         path = filedialog.asksaveasfilename(parent=self.root, title="Save the translation as",
-                                            filetypes=PRESENTATION_TYPES, defaultextension=".pptx",
+                                            filetypes=types, defaultextension=suffix or ".pptx",
                                             initialdir=self._initial_dir(current or self.input_path.get()),
                                             initialfile=Path(current).name if current else "")
         if path:
             self.output_path.set(os.path.normpath(path))
             self._auto_output = ""
             self._confirmed_output = os.path.normpath(path)
+
+    def _input_suffix(self) -> str:
+        return Path(self.input_path.get().strip()).suffix.lower()
 
     def _suggest_output(self) -> None:
         """Fill in ``<input> (<language>).pptx`` until the user picks their own output path."""
@@ -239,8 +248,8 @@ class MainWindow:
         if not source or (current and current != self._auto_output):
             return
         code = self.target_box.code
-        stem = Path(source).stem
-        suggestion = str(Path(source).with_name(f"{stem} ({code}).pptx" if code else f"{stem} (translated).pptx"))
+        stem, suffix = Path(source).stem, self._input_suffix() or ".pptx"
+        suggestion = str(Path(source).with_name(f"{stem} ({code or 'translated'}){suffix}"))
         self._auto_output = suggestion
         self.output_path.set(suggestion)
 
@@ -253,10 +262,10 @@ class MainWindow:
         source = Path(self.input_path.get().strip())
         output_text = self.output_path.get().strip()
         if not source.is_file():
-            return problem(f"The presentation to translate doesn't exist:\n{source}")
-        if source.suffix.lower() != ".pptx":
-            return problem("Cicero translates PowerPoint .pptx files. Open older .ppt files in PowerPoint "
-                           "and save them as .pptx first.")
+            return problem(f"The file to translate doesn't exist:\n{source}")
+        if not is_supported(source):
+            return problem("Cicero translates PowerPoint .pptx and Word .docx files. Open older .ppt or .doc "
+                           "files in PowerPoint or Word and save them as .pptx or .docx first.")
         if self.target_box.code is None:
             return problem("Choose the language to translate into.")
         if not self.source_box.is_valid:
@@ -264,8 +273,8 @@ class MainWindow:
         if self.source_box.code and self.source_box.code == self.target_box.code:
             return problem("The “From” and “Into” languages are the same.")
         output = Path(output_text)
-        if output.suffix.lower() != ".pptx":
-            output = output.with_name(output.name + ".pptx")
+        if output.suffix.lower() != source.suffix.lower():
+            output = output.with_name(output.name + source.suffix.lower())
             self.output_path.set(str(output))
         if not output.parent.is_dir():
             return problem(f"The folder to save into doesn't exist:\n{output.parent}")
@@ -276,7 +285,7 @@ class MainWindow:
                 __app_name__, f"{output.name} already exists. Replace it?", parent=self.root):
             return None
         return JobOptions(source, output, self.target_box.code, self.source_box.code, self.write_review.get(),
-                          self.include_masters.get())
+                          self.include_masters.get() and source.suffix.lower() == ".pptx")
 
     def start(self) -> None:
         if self.job is not None or self.translator is None:
@@ -323,7 +332,7 @@ class MainWindow:
         self.progress.configure(value=1.0)
         assert result.output_path is not None
         self.status_text.set(f"Done in {format_duration(result.elapsed)}.")
-        self.counters["slides"].set(f"{result.slides} slides")
+        self.counters["pages"].set(f"{result.pages} {result.unit}s" if result.unit else "")
         self.counters["paragraphs"].set(f"{result.paragraphs:,} paragraphs")
         self.counters["characters"].set(f"{result.characters:,} characters")
         self.counters["time"].set(f"{format_duration(result.elapsed)} total")
@@ -352,10 +361,12 @@ class MainWindow:
 
     def _render_counters(self, progress: Progress) -> None:
         if progress.paragraphs_total:
-            if progress.slide == 0 and progress.paragraphs_done:
-                self.counters["slides"].set("Masters and layouts")
+            if not progress.unit:
+                self.counters["pages"].set("")
+            elif progress.page == 0 and progress.paragraphs_done:
+                self.counters["pages"].set("Masters and layouts")
             else:
-                self.counters["slides"].set(f"Slide {progress.slide or 1} of {progress.slides_total}")
+                self.counters["pages"].set(f"{progress.unit.capitalize()} {progress.page or 1} of {progress.pages_total}")
             self.counters["paragraphs"].set(f"Paragraph {progress.paragraphs_done:,} of {progress.paragraphs_total:,}")
             self.counters["characters"].set(f"{progress.characters_done:,} of {progress.characters_total:,} characters")
         remaining = progress.remaining

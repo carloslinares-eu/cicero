@@ -46,7 +46,7 @@ def test_translates_every_kind_of_text(fake_translator, sample_deck):
     assert "2024 – 42 %" in texts and "3.50" in texts  # nothing to translate, left alone and not sent
     sent = [segment for request in fake_translator.requests for segment in request[0]]
     assert not any("2024" in segment or "3.50" in segment for segment in sent)
-    assert result.slides == 3 and result.paragraphs == 10
+    assert result.pages == 3 and result.paragraphs == 10
 
 
 def test_keeps_run_formatting(fake_translator, sample_deck):
@@ -103,8 +103,8 @@ def test_progress_counts_paragraphs_slides_and_time(fake_translator, sample_deck
     fake_translator.on_request = lambda number: seen.append(job.progress)
     job.run()
     assert [p.paragraphs_done for p in seen] == list(range(10))
-    assert all(p.paragraphs_total == 10 and p.slides_total == 3 for p in seen)
-    assert [p.slide for p in seen[1:]] == [1, 1, 1, 2, 2, 2, 2, 3, 3]  # slide of the paragraph just translated
+    assert all(p.paragraphs_total == 10 and p.pages_total == 3 for p in seen)
+    assert [p.page for p in seen[1:]] == [1, 1, 1, 2, 2, 2, 2, 3, 3]  # slide of the paragraph just translated
 
 
 def test_remaining_time_follows_the_speed_so_far():
@@ -182,6 +182,6 @@ def test_masters_and_layouts_only_when_asked(fake_translator, sample_deck):
 def test_master_blocks_are_labelled(sample_deck):
     from cicero.core.presentation import PptxDocument
 
-    blocks = [block for block in PptxDocument(sample_deck, include_masters=True).blocks if block.slide == 0]
+    blocks = [block for block in PptxDocument(sample_deck, include_masters=True).blocks if block.page == 0]
     assert blocks and blocks[0].location.startswith("Master: ")
     assert any(block.location.startswith("Layout: Title Slide › ") for block in blocks)

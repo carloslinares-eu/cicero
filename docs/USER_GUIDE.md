@@ -1,8 +1,8 @@
 # Cicero user guide
 
-Cicero makes a translated copy of a PowerPoint presentation using Google Cloud
-Translation. The original file is only ever **read**; the translation is saved
-as a new file.
+Cicero makes a translated copy of a PowerPoint presentation (`.pptx`) or a Word
+document (`.docx`) using Google Cloud Translation. The original file is only ever
+**read**; the translation is saved as a new file.
 
 ## Setting up Google Cloud
 
@@ -56,10 +56,10 @@ See [Keeping your key safe](#keeping-your-key-safe).
 Cicero remembers the key file's **location** and reconnects when it starts. It
 never copies the key.
 
-### Presentation
+### Document
 
-- **Translate**: the `.pptx` file to translate. Older `.ppt` files must first be
-  opened in PowerPoint and saved as `.pptx`.
+- **Translate**: the `.pptx` or `.docx` file to translate. Older `.ppt` and `.doc`
+  files must first be opened in PowerPoint or Word and saved as `.pptx` or `.docx`.
 - **From**: the language the presentation is written in. *Detect automatically*
   works well for most presentations; pick the language yourself if the slides are
   mostly short labels, names or acronyms, which are hard to detect.
@@ -68,7 +68,7 @@ never copies the key.
   Regional variants have their own entries, e.g. *Portuguese (Portugal) (pt-PT)*
   and *Chinese (Traditional) (zh-TW)*.
 - **Save as**: where to save the translation. It starts as
-  `<original name> (<language code>).pptx` in the same folder, and follows your
+  `<original name> (<language code>).pptx` (or `.docx`) in the same folder, and follows your
   language choice until you choose another path yourself. It can't be the
   original file.
 - **Also save a review spreadsheet**: also writes a `.csv` file with the same name
@@ -81,7 +81,8 @@ never copies the key.
   while you edit (*Click to edit Master title style*, *Click to add text*). Turn
   this on when the presentation is a template, or when that shared text is in the
   original language. Their rows in the review spreadsheet have slide number 0 and
-  a location such as `Layout: Title Slide › Title 1`.
+  a location such as `Layout: Title Slide › Title 1`. Word documents have no
+  masters, so the option is greyed out for them.
 
 ### Translating
 
@@ -106,6 +107,8 @@ open it.
 
 ## What gets translated
 
+### Presentations
+
 | Translated | Not translated |
 |------------|----------------|
 | Slide titles and placeholders | Text inside pictures |
@@ -115,6 +118,23 @@ open it.
 | Speaker notes | |
 | Slide masters and layouts, if you ask for it (see below) | |
 | | Text with no letters: numbers, dates such as `2024`, symbols, bullets |
+
+### Word documents
+
+| Translated | Not translated |
+|------------|----------------|
+| Body text, headings, lists | Text inside pictures |
+| Tables, including tables inside tables | Charts and SmartArt |
+| Text boxes | Field codes (tables of contents and page numbers update when Word refreshes fields) |
+| Headers and footers | Deleted text in tracked changes (insertions are translated) |
+| Footnotes, endnotes and comments | Text with no letters |
+
+Word documents have no fixed pages (Word lays them out when it opens the file),
+so the status bar shows paragraphs and characters only, and the review
+spreadsheet has no page column; its *Location* says `Body`, `Body › Table`,
+`Header`, `Footnotes` and so on.
+
+### Formatting
 
 Each paragraph keeps its formatting. When a paragraph mixes formats (a bold word,
 a link, a colour), Cicero tells the translator which words belong together and
@@ -163,9 +183,9 @@ setting helps; otherwise check slides with tight text boxes afterwards.
 **"Can't write the file. Is it open in PowerPoint?"**
 : Close the file in PowerPoint (or choose another **Save as** name) and try again.
 
-**"This isn't a PowerPoint .pptx file, or it is damaged"**
-: Cicero reads `.pptx` only. Open `.ppt` or `.odp` files in PowerPoint or
-  LibreOffice Impress and save them as `.pptx`.
+**"This isn't a PowerPoint .pptx file" / "This isn't a Word .docx file"**
+: Cicero reads `.pptx` and `.docx`. Open `.ppt`, `.doc`, `.odp` or `.odt` files in
+  PowerPoint, Word or LibreOffice and save them as `.pptx` or `.docx`.
 
 **"No module named tkinter" or "No module named _tkinter"** (Linux)
 : Install Tkinter for your Python, e.g. `sudo apt install python3-tk`.

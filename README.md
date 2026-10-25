@@ -5,16 +5,18 @@
 <h1 align="center">Cicero</h1>
 
 <p align="center">
-  Translates PowerPoint presentations with Google Cloud Translation, keeping every slide's layout and formatting.
+  Translates PowerPoint presentations and Word documents with Google Cloud Translation, keeping their layout and formatting.
 </p>
 
 <p align="center">
   <img src="docs/images/screenshot.png" width="640" alt="The Cicero window while translating">
 </p>
 
-Pick a `.pptx` file and a language. Cicero finds the text on every slide (titles,
-text boxes, shapes inside groups, tables and speaker notes), sends it to Google
-Cloud Translation and writes a translated copy next to the original. Fonts,
+Pick a `.pptx` presentation or a `.docx` Word document and a language. Cicero
+finds the text on every slide or page (titles, text boxes, shapes inside groups,
+tables, SmartArt, speaker notes; in Word also headers, footers and footnotes),
+sends it to Google Cloud Translation and writes a translated copy next to the
+original. Fonts,
 colours, bold words and links stay where they were. The original file is never
 changed.
 
@@ -26,6 +28,8 @@ changed.
 - **Everything on the slide.** Titles, placeholders, text boxes, shapes nested in
   groups, table cells, SmartArt and speaker notes, and optionally the slide
   masters and layouts.
+- **Word documents too.** Body text, tables (including tables in tables), text
+  boxes, headers, footers, footnotes, endnotes and comments.
 - **Repeated text is translated once.** A footer on every slide is sent to Google
   (and billed) only once.
 - **Any language Google supports** (about 190), with automatic detection of the
@@ -98,7 +102,7 @@ The last two also work straight from a checkout after `pip install -r requiremen
 
 1. Click **Browse…** next to **Key file** and choose your Google Cloud service
    account key (a `.json` file). Cicero connects and shows the project name.
-2. Click **Browse…** next to **Translate** and choose a `.pptx` file.
+2. Click **Browse…** next to **Translate** and choose a `.pptx` or `.docx` file.
 3. Choose the language in **Into**. Leave **From** on *Detect automatically* or pick it.
 4. Check the **Save as** path (it defaults to `<name> (<language>).pptx` next to the original).
 5. Click **Translate**.
@@ -110,7 +114,7 @@ what is and isn't translated, and troubleshooting.
 
 | Step | What happens |
 |------|--------------|
-| 1. Reading | Every slide is searched for paragraphs with letters in them: shapes (including inside groups), table cells, SmartArt and speaker notes. |
+| 1. Reading | The file is searched for paragraphs with letters in them: on slides, shapes (including inside groups), table cells, SmartArt and notes; in Word, the body, tables, text boxes, headers, footers and notes. |
 | 2. Packing | Each paragraph's runs are wrapped in numbered `<span>` tags, so the translator sees one sentence but knows which words belonged to which run. |
 | 3. Translating | Each distinct paragraph is sent to Cloud Translation v3 once, in batches of up to 100 (10 000 characters). |
 | 4. Saving | Each translation is split back into its runs, keeping their formatting, and the copy is saved through a temporary file. |
@@ -148,7 +152,10 @@ cicero-translator/
 │   ├── app.py               entry point: creates the window
 │   ├── core/                all the work, no GUI code
 │   │   ├── job.py           read → translate → save, with progress and Stop
-│   │   ├── presentation.py  finding text in a .pptx and writing translations back
+│   │   ├── documents.py     picking the reader for a file type
+│   │   ├── blocks.py        TextBlock and what all document types share
+│   │   ├── presentation.py  finding text in a .pptx (slides, SmartArt, masters)
+│   │   ├── word.py          finding text in a .docx
 │   │   ├── segments.py      packing runs into HTML and unpacking the translation
 │   │   ├── translator.py    Google Cloud Translation v3 client, batching, error messages
 │   │   ├── credentials.py   service account keys and Application Default Credentials

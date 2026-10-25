@@ -13,8 +13,8 @@ class TranslationError(CiceroError):
     """Google Cloud Translation refused or failed a request."""
 
 
-class PresentationError(CiceroError):
-    """The presentation can't be opened or saved."""
+class DocumentError(CiceroError):
+    """The document can't be opened or saved."""
 
 
 class OperationCancelled(CiceroError):

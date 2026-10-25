@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import os
-import tempfile
 from collections.abc import Iterable, Iterator
-from dataclasses import dataclass, field
 from pathlib import Path
 
 import pptx
@@ -16,10 +13,10 @@ from pptx.opc.package import Part, XmlPart
 from pptx.oxml import parse_xml
 from pptx.presentation import Presentation
 from pptx.shapes.group import GroupShape
-from pptx.text.text import TextFrame, _Paragraph, _Run
+from pptx.text.text import TextFrame, _Paragraph
 
-from cicero.core.errors import PresentationError
-from cicero.core.segments import decode_runs, encode_runs, needs_translation, split_edges
+from cicero.core.blocks import TextBlock, make_block, save_atomically
+from cicero.core.errors import DocumentError
 
 # SmartArt keeps its text in a "data model" part, and PowerPoint 2007+ also caches the
 # rendered shapes, text included, in a "drawing" part. Both are translated so the cached
@@ -29,21 +26,11 @@ SMARTART_RELATIONSHIPS = (RT.DIAGRAM_DATA, RT_DIAGRAM_DRAWING)
 A_P = "{http://schemas.openxmlformats.org/drawingml/2006/main}p"
 
 
-@dataclass(slots=True)
-class TextBlock:
-    """One paragraph to translate: its runs that contain text, and the HTML sent to the translator."""
-
-    slide: int  # 1-based slide number; 0 for slide masters and layouts
-    location: str  # shape name, "Table: …", "SmartArt", "Notes", or "Master: …"/"Layout: …" plus the shape
-    runs: list[_Run]
-    edges: list[tuple[str, str]]  # whitespace stripped from the start and end of each run
-    original: str  # the paragraph as plain text
-    source_html: str
-    translation: str = field(default="")  # plain text, filled in by ``apply``
-
-
 class PptxDocument:
     """An open presentation, the paragraphs found in it, and how to save it."""
+
+    kind = "presentation"
+    unit = "slide"
 
     def __init__(self, path: str | Path, include_masters: bool = False) -> None:
         self.presentation = open_presentation(path)
@@ -52,7 +39,7 @@ class PptxDocument:
         self.blocks = self._collect()
 
     @property
-    def slide_count(self) -> int:
+    def page_count(self) -> int:
         return len(self.presentation.slides)
 
     def save(self, path: str | Path) -> None:
@@ -64,7 +51,7 @@ class PptxDocument:
         blocks = []
         for number, location, paragraphs in self._iter_paragraph_groups():
             for paragraph in paragraphs:
-                block = make_block(number, location, paragraph)
+                block = make_block(number, location, paragraph.runs)
                 if block is not None:
                     blocks.append(block)
         return blocks
@@ -92,31 +79,15 @@ class PptxDocument:
                         yield 0, f"{owner} › {location}", frame.paragraphs
 
 
-def make_block(slide: int, location: str, paragraph: _Paragraph) -> TextBlock | None:
-    """A block for ``paragraph``, or None if it has nothing worth translating."""
-    runs = [run for run in paragraph.runs if run.text.strip()]
-    if not runs or not needs_translation("".join(run.text for run in runs)):
-        return None
-    pieces = [split_edges(run.text) for run in runs]
-    return TextBlock(
-        slide=slide,
-        location=location,
-        runs=runs,
-        edges=[(before, after) for before, _, after in pieces],
-        original="".join(run.text for run in paragraph.runs),
-        source_html=encode_runs([core for _, core, _ in pieces]),
-    )
-
-
 def open_presentation(path: str | Path) -> Presentation:
     try:
         return pptx.Presentation(str(path))
     except FileNotFoundError:
-        raise PresentationError(f"File not found:\n{path}") from None
+        raise DocumentError(f"File not found:\n{path}") from None
     except PermissionError:
-        raise PresentationError(f"Can't open the file. Is it open in another program?\n{path}") from None
+        raise DocumentError(f"Can't open the file. Is it open in another program?\n{path}") from None
     except (pptx.exc.PackageNotFoundError, KeyError, ValueError) as exc:
-        raise PresentationError(
+        raise DocumentError(
             f"This isn't a PowerPoint .pptx file, or it is damaged.\n{path}\n\n"
             "Older .ppt files must first be saved as .pptx from PowerPoint.\n\n"
             f"Details: {exc}"
@@ -168,31 +139,6 @@ class _XmlBlob:
             self.part._blob = etree.tostring(self.element, xml_declaration=True, encoding="UTF-8", standalone=True)
 
 
-def apply(block: TextBlock, translated_html: str) -> None:
-    """Write a translation into the block's runs. Each run keeps its own formatting."""
-    texts = decode_runs(translated_html, len(block.runs))
-    for run, (before, after), text in zip(block.runs, block.edges, texts):
-        run.text = f"{before}{text}{after}" if text else ""
-    block.translation = "".join(run.text for run in block.runs)
-
-
 def save_presentation(presentation: Presentation, path: str | Path) -> None:
     """Save through a temporary file, so an existing file is only replaced by a complete one."""
     save_atomically(presentation.save, path)
-
-
-def save_atomically(save, path: str | Path) -> None:
-    """Call ``save(temporary_path)``, then move the result onto ``path``."""
-    path = Path(path)
-    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.stem}.", suffix=".cicero-partial", dir=path.parent)
-    os.close(descriptor)
-    try:
-        save(temporary)
-        os.replace(temporary, path)
-    except PermissionError:
-        raise PresentationError(f"Can't write the file. Is it open in another program?\n{path}") from None
-    except OSError as exc:
-        raise PresentationError(f"Can't save the file:\n{path}\n\n{exc}") from None
-    finally:
-        if os.path.exists(temporary):
-            os.remove(temporary)
