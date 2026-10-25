@@ -4,7 +4,10 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.1.0] - 2026-10-25
+
+Word documents, PDFs and DeepL join PowerPoint and Google Cloud Translation, along with SmartArt,
+slide masters, a status bar and a new icon.
 
 ### Added
 
