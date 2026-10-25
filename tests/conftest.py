@@ -18,7 +18,12 @@ LANGUAGES = [Language("en", "English"), Language("es", "Spanish"), Language("zh-
 class FakeTranslator:
     """Upper-cases the text between tags, like a translator that keeps markup in place."""
 
+    name = "Fake"
+    description = "for tests"
+
     def __init__(self) -> None:
+        self.max_segments = 100
+        self.max_characters = 10_000
         self.requests: list[tuple[list[str], str, str | None]] = []
         self.on_request = None  # optional hook called before each request
 

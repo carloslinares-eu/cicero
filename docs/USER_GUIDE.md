@@ -1,14 +1,26 @@
 # Cicero user guide
 
 Cicero makes a translated copy of a PowerPoint presentation (`.pptx`), a Word
-document (`.docx`) or a PDF using Google Cloud Translation. The original file is only ever
+document (`.docx`) or a PDF using Google Cloud Translation or DeepL. The original file is only ever
 **read**; the translation is saved as a new file.
+
+## Choosing a translation service
+
+Cicero works with either service; you only need one.
+
+| | Google Cloud Translation | DeepL |
+|---|---|---|
+| Languages | About 190 | Fewer, but with regional variants (British/American English, Brazilian/European Portuguese); the list appears when you connect |
+| Free allowance | A monthly amount of characters on a billed project | 500 000 characters a month on the Free plan |
+| Setup | Google Cloud project, API, service account key | DeepL account and an authentication key |
+| Credentials in Cicero | A key file on your computer | A key you paste; optionally remembered in the system credential store |
+
+Your documents go straight from your computer to the service you choose.
 
 ## Setting up Google Cloud
 
-Cicero uses your own Google Cloud project, so translations are billed to you
-and your presentations go straight from your computer to Google. You need to do
-this once.
+Cicero uses your own Google Cloud project, so translations are billed to you.
+You need to do this once.
 
 1. **Create a project.** In the [Google Cloud console](https://console.cloud.google.com/),
    open the project picker at the top and click **New project**. Cloud
@@ -24,7 +36,7 @@ this once.
    the **key file** Cicero asks for.
 
 Keep the key file private. Anyone who has it can translate text on your bill.
-See [Keeping your key safe](#keeping-your-key-safe).
+See [Keeping your keys safe](#keeping-your-keys-safe).
 
 > **Can't create keys?** Organisations often forbid service account keys (the
 > policy `iam.disableServiceAccountKeyCreation`). Use Application Default
@@ -38,11 +50,28 @@ See [Keeping your key safe](#keeping-your-key-safe).
 > then leave **Key file** empty in Cicero and click **Connect**. Your Google
 > account needs the *Cloud Translation API User* role on the project.
 
+## Setting up DeepL
+
+1. Sign up for the [DeepL API](https://www.deepl.com/pro-api). The **DeepL API
+   Free** plan is enough to start; a regular DeepL (non-API) subscription doesn't
+   include API access.
+2. On deepl.com open **Account → API Keys** and copy your authentication key.
+   Free-plan keys end in `:fx`; Cicero picks the right server from that.
+
+Keep the key private, like a password.
+
 ## The window
 
 ![The Cicero window](images/screenshot.png)
 
-### Google Cloud
+### Translation service
+
+- **Service**: *Google Cloud Translation* or *DeepL*. Switching connects to the
+  other service straight away if Cicero already has its credentials. The language
+  boxes then show that service's languages, and each service remembers the
+  languages you last used with it.
+
+For Google Cloud Translation:
 
 - **Key file**: the service account key from the setup above. Choosing a file
   with **Browse…** connects straight away. If you type or paste a path, click
@@ -55,6 +84,16 @@ See [Keeping your key safe](#keeping-your-key-safe).
 
 Cicero remembers the key file's **location** and reconnects when it starts. It
 never copies the key.
+
+For DeepL:
+
+- **Auth key**: paste the authentication key and click **Connect**. The line
+  underneath shows your plan and how much of this period's character allowance
+  you have used.
+- **Remember**: keeps the key in the operating system's credential store
+  (Windows Credential Manager, the macOS Keychain, or the Secret Service on
+  Linux), never in a file, and reconnects when Cicero starts. Untick it and connect
+  again to remove the stored key.
 
 ### Document
 
@@ -174,7 +213,7 @@ Translated text is often longer than the original (German and French are
 typically 20–30 % longer than English). PowerPoint's *Shrink text on overflow*
 setting helps; otherwise check slides with tight text boxes afterwards.
 
-## Keeping your key safe
+## Keeping your keys safe
 
 - Store the key file outside any folder that is synchronised publicly or
   committed to Git. This project's `.gitignore` ignores `*.json` to make
@@ -185,6 +224,8 @@ setting helps; otherwise check slides with tight text boxes afterwards.
   Service Accounts → *account* → Keys**) and create a new one. Deleting a key
   stops it working immediately, everywhere.
 - Consider setting a budget alert under **Billing → Budgets & alerts**.
+- For DeepL, a leaked key can be deleted and replaced under **Account → API Keys**.
+  DeepL also lets you set a cost control limit on Pro plans.
 
 ## Troubleshooting
 
@@ -198,6 +239,17 @@ setting helps; otherwise check slides with tight text boxes afterwards.
 
 **"Billing isn't enabled for project …"**
 : Link a billing account to the project under **Billing**.
+
+**"DeepL rejected the authentication key"**
+: Copy the key again from **Account → API Keys** on deepl.com. Keys from a regular
+  DeepL subscription without API access don't work.
+
+**"Your DeepL character quota for this period is used up"**
+: Wait for the next period, upgrade the plan, or switch to Google Cloud Translation.
+
+**A language I need isn't in the list**
+: Each service supports its own set of languages. Switch the **Service** to the
+  other one.
 
 **"Google rejected the key"**
 : The key was deleted or disabled, or its service account was removed. Create a new key.

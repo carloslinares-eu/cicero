@@ -39,6 +39,14 @@ class Language:
 class Translator(Protocol):
     """What the rest of Cicero needs from a translation service. Tests use a fake one."""
 
+    name: str  # shown to the user: "Google Cloud Translation", "DeepL"
+    max_segments: int  # per request
+    max_characters: int  # per request
+
+    @property
+    def description(self) -> str:
+        """One line about the connection, e.g. the project or the quota used."""
+
     def languages(self) -> list[Language]: ...
 
     def translate(self, html_segments: Sequence[str], target: str, source: str | None = None) -> list[str]: ...
@@ -47,11 +55,19 @@ class Translator(Protocol):
 class GoogleTranslator:
     """Cloud Translation v3 client for one Google Cloud project."""
 
+    name = "Google Cloud Translation"
+    max_segments = MAX_SEGMENTS_PER_REQUEST
+    max_characters = MAX_CHARACTERS_PER_REQUEST
+
     def __init__(self, account: CloudAccount, location: str = "global",
                  client: translate_v3.TranslationServiceClient | None = None) -> None:
         self.account = account
         self.parent = f"projects/{account.project_id}/locations/{location}"
         self._client = client or translate_v3.TranslationServiceClient(credentials=account.credentials)
+
+    @property
+    def description(self) -> str:
+        return f"project “{self.account.project_id}”"
 
     def languages(self, display_language: str = "en") -> list[Language]:
         """Every supported language, sorted by name. Also a cheap way to check the credentials work."""

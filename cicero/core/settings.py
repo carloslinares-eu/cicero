@@ -24,12 +24,28 @@ def settings_path() -> Path:
 
 @dataclass(slots=True)
 class Settings:
-    key_file: str = ""  # path to the service account key; empty means Application Default Credentials
-    source_language: str = ""  # empty means detect automatically
+    engine: str = "google"  # "google" or "deepl"
+    key_file: str = ""  # path to the Google service account key; empty means Application Default Credentials
+    source_language: str = ""  # Google language codes; empty means detect automatically
     target_language: str = ""
+    deepl_source_language: str = ""  # DeepL uses its own codes (EN-GB, PT-BR…)
+    deepl_target_language: str = ""
+    remember_deepl_key: bool = True  # in the system credential store, see secrets.py
     write_review: bool = False
     include_masters: bool = False
     last_folder: str = ""
+
+    def languages(self, engine: str) -> tuple[str, str]:
+        """The (source, target) codes last used with ``engine``."""
+        if engine == "deepl":
+            return self.deepl_source_language, self.deepl_target_language
+        return self.source_language, self.target_language
+
+    def set_languages(self, engine: str, source: str, target: str) -> None:
+        if engine == "deepl":
+            self.deepl_source_language, self.deepl_target_language = source, target
+        else:
+            self.source_language, self.target_language = source, target
 
     @classmethod
     def load(cls, path: Path | None = None) -> Settings:

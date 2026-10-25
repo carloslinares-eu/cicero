@@ -77,8 +77,8 @@ def test_review_spreadsheet(fake_translator, sample_deck):
     assert {"Slide": "1", "Location": "Notes", "Original": "Speak slowly", "Translation": "SPEAK SLOWLY"} in rows
 
 
-def test_stop_saves_nothing(fake_translator, sample_deck, monkeypatch):
-    monkeypatch.setattr("cicero.core.job.batches", lambda segments: ([index] for index in range(len(segments))))
+def test_stop_saves_nothing(fake_translator, sample_deck):
+    fake_translator.max_segments = 1  # one paragraph per request
     job = TranslationJob(fake_translator, JobOptions(sample_deck, sample_deck.with_name("out.pptx"), "es"))
     fake_translator.on_request = lambda number: job.cancel() if number == 1 else None
     result = job.run()
@@ -96,8 +96,8 @@ def test_errors_are_reported_not_raised(fake_translator, tmp_path):
     assert list(tmp_path.glob("*.cicero-partial")) == []
 
 
-def test_progress_counts_paragraphs_slides_and_time(fake_translator, sample_deck, monkeypatch):
-    monkeypatch.setattr("cicero.core.job.batches", lambda segments: ([index] for index in range(len(segments))))
+def test_progress_counts_paragraphs_slides_and_time(fake_translator, sample_deck):
+    fake_translator.max_segments = 1  # one paragraph per request
     seen = []
     job = TranslationJob(fake_translator, JobOptions(sample_deck, sample_deck.with_name("out.pptx"), "es"))
     fake_translator.on_request = lambda number: seen.append(job.progress)

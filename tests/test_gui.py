@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from cicero.core.settings import Settings
+from cicero.core.translator import Language
 from tests.conftest import LANGUAGES
 
 
@@ -28,6 +29,9 @@ def window(tk_root, tmp_path, monkeypatch, fake_translator):
     from cicero.gui.main_window import MainWindow
 
     monkeypatch.setattr("cicero.core.settings.settings_path", lambda: tmp_path / "settings.json")
+    saved_keys = []
+    monkeypatch.setattr("cicero.gui.main_window.load_deepl_key", lambda: "")  # never touch the real keyring
+    monkeypatch.setattr("cicero.gui.main_window.save_deepl_key", saved_keys.append)
     top = tk.Toplevel(tk_root)
     main = MainWindow(top, settings=Settings(target_language="es"), autoconnect=False)
     yield main
@@ -90,3 +94,21 @@ def test_word_documents_keep_their_extension_and_have_no_masters(window, fake_tr
     assert window.masters_check.instate(["disabled"])
     window.input_path.set(str(Path("C:/docs/Deck.pptx")))
     assert not window.masters_check.instate(["disabled"])
+
+
+def test_switching_service_swaps_the_credentials_row(window, fake_translator):
+    window.translator = fake_translator
+    assert window.key_entry.winfo_manager() == "grid" and not window.deepl_entry.winfo_manager()
+    window.engine_name.set("DeepL")
+    window._on_engine_changed()
+    assert window.deepl_entry.winfo_manager() == "grid" and not window.key_entry.winfo_manager()
+    assert window.translator is None and window.settings.engine == "deepl"
+    assert window.translate_button.instate(["disabled"])
+
+
+def test_languages_are_remembered_per_service(window, fake_translator):
+    window.settings.set_languages("deepl", "", "EN-GB")
+    window.engine = "deepl"
+    window._on_connected("deepl", fake_translator, [*LANGUAGES, Language("EN-GB", "English (British)")], "test")
+    assert window.target_box.code == "EN-GB"
+    assert window.settings.languages("google") == ("", "es")

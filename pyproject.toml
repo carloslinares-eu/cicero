@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cicero-translator"
 dynamic = ["version"]
-description = "Translate PowerPoint presentations, Word documents and PDFs with Google Cloud Translation, keeping their formatting."
+description = "Translate PowerPoint presentations, Word documents and PDFs with Google Cloud Translation or DeepL, keeping their formatting."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "GPL-3.0-only"
 license-files = ["LICENSE"]
 authors = [{ name = "Carlos Linares" }]
-keywords = ["powerpoint", "pptx", "word", "docx", "pdf", "translation", "google cloud translation", "tkinter"]
+keywords = ["powerpoint", "pptx", "word", "docx", "pdf", "translation", "google cloud translation", "deepl", "tkinter"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: Win32 (MS Windows)",
@@ -29,6 +29,8 @@ dependencies = [
     "python-pptx>=1.0.2,<2",
     "python-docx>=1.2,<2",
     "pymupdf>=1.26,<3",
+    "deepl>=1.20,<2",
+    "keyring>=25",
 ]
 
 [project.optional-dependencies]

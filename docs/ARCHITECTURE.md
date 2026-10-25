@@ -16,6 +16,8 @@ cicero/
 │   ├── pdf.py           PdfDocument: text blocks replaced in place with PyMuPDF
 │   ├── segments.py      encode_runs(), decode_runs(): runs ⇄ one HTML string
 │   ├── translator.py    Translator protocol, GoogleTranslator (v3), batches(), describe_error()
+│   ├── deepl_engine.py  DeepLTranslator: the same protocol on the DeepL API
+│   ├── secrets.py       DeepL key in the OS credential store (keyring)
 │   ├── credentials.py   load_key_file(), load_default() → CloudAccount
 │   ├── review.py        write_review(): the .csv review spreadsheet
 │   ├── settings.py      Settings: remembered paths and languages (JSON in the user config folder)
@@ -177,6 +179,28 @@ return them unchanged and still bill for them.
   progress bar moving and Stop quick.
 
 The `Translator` protocol is what the job depends on; tests pass a fake.
+
+## DeepL
+
+`DeepLTranslator` implements the same protocol with the official `deepl` client
+(`DeepLClient`), which picks the Free or Pro server from the key. It sends the
+same `<span id="N">` HTML with `tag_handling="html"`, so runs are recovered exactly
+as with Google. Differences the rest of the code relies on:
+
+- **Request size**: DeepL takes at most 50 texts per request, so each translator
+  exposes `max_segments` / `max_characters` and the job batches with them.
+- **Languages**: DeepL lists source and target languages separately, and targets
+  include regional variants (`EN-GB`, `PT-BR`) that aren't valid sources.
+  `languages()` merges them with `source` / `target` flags, which is what the two
+  language boxes filter on.
+- **Description**: the connection line shows the plan and the character usage from
+  `get_usage()`.
+
+The key is a secret string rather than a file, so it isn't stored in
+`settings.json`. `secrets.py` keeps it in the system credential store through
+`keyring` and treats any failure there as "not remembered". The settings file
+stores the chosen engine and, per engine, the last languages, because the two
+services use different codes.
 
 ## Saving
 

@@ -2,6 +2,8 @@ google-cloud-translate==3.28.0  # Cloud Translation API v3 client (pulls in goog
 python-pptx==1.0.2              # reading and writing .pptx files (pulls in lxml, Pillow, XlsxWriter)
 python-docx==1.2.0              # reading and writing .docx files
 pymupdf==2.0                    # reading and rewriting PDF files (AGPL-3.0, compatible with Cicero's GPL-3.0)
+deepl==1.32.0                   # DeepL API client, the alternative translation service
+keyring==25.7.0                 # keeping the DeepL key in the system credential store
 
 # Cicero also needs Tkinter, which ships with the python.org installers for
 # Windows and macOS. On Linux install it separately, e.g.

@@ -5,7 +5,7 @@
 <h1 align="center">Cicero</h1>
 
 <p align="center">
-  Translates PowerPoint presentations, Word documents and PDFs with Google Cloud Translation, keeping their layout and formatting.
+  Translates PowerPoint presentations, Word documents and PDFs with Google Cloud Translation or DeepL, keeping their layout and formatting.
 </p>
 
 <p align="center">
@@ -15,8 +15,8 @@
 Pick a `.pptx` presentation, a `.docx` Word document or a `.pdf` and a language. Cicero
 finds the text on every slide or page (titles, text boxes, shapes inside groups,
 tables, SmartArt, speaker notes; in Word also headers, footers and footnotes),
-sends it to Google Cloud Translation and writes a translated copy next to the
-original. Fonts,
+sends it to Google Cloud Translation or DeepL and writes a translated copy next
+to the original. Fonts,
 colours, bold words and links stay where they were. The original file is never
 changed.
 
@@ -34,8 +34,9 @@ changed.
   and colour; pictures, drawings and backgrounds stay untouched.
 - **Repeated text is translated once.** A footer on every slide is sent to Google
   (and billed) only once.
-- **Any language Google supports** (about 190), with automatic detection of the
-  source language. Type in the language box to filter the list.
+- **Two translation services.** Google Cloud Translation (about 190 languages) or
+  DeepL (Free or Pro), both with automatic detection of the source language.
+  Type in the language box to filter the list.
 - **Only pays for words.** Numbers, symbols and empty text aren't sent.
 - **Review spreadsheet.** Optionally save a `.csv` with each original paragraph
   next to its translation, for proofreading.
@@ -50,12 +51,16 @@ changed.
   - Windows and macOS: the installers from [python.org](https://www.python.org/downloads/) include Tkinter.
   - Linux: install it from your package manager, e.g. `sudo apt install python3-tk` (Debian/Ubuntu)
     or `sudo dnf install python3-tkinter` (Fedora).
-- A **Google Cloud project** with the Cloud Translation API enabled, and a
-  service account key for it. The [user guide](docs/USER_GUIDE.md#setting-up-google-cloud)
-  walks through it step by step; it takes about five minutes.
+- An account with one of the translation services:
+  - **Google Cloud Translation**: a Google Cloud project with the Cloud Translation
+    API enabled and a service account key. The [user guide](docs/USER_GUIDE.md#setting-up-google-cloud)
+    walks through it; it takes about five minutes.
+  - **DeepL**: a [DeepL API](https://www.deepl.com/pro-api) account (the Free plan
+    works) and its authentication key. See [Setting up DeepL](docs/USER_GUIDE.md#setting-up-deepl).
 
-Google charges for Cloud Translation by the character, with a monthly free
-allowance. See [Cloud Translation pricing](https://cloud.google.com/translate/pricing).
+Both services charge by the character, with a monthly free allowance. See
+[Cloud Translation pricing](https://cloud.google.com/translate/pricing) and
+[DeepL API plans](https://www.deepl.com/pro-api).
 
 ## Installation
 
@@ -102,8 +107,9 @@ The last two also work straight from a checkout after `pip install -r requiremen
 
 ## Quick start
 
-1. Click **Browse…** next to **Key file** and choose your Google Cloud service
-   account key (a `.json` file). Cicero connects and shows the project name.
+1. Choose the **Service**. For Google Cloud Translation, click **Browse…** next to
+   **Key file** and choose your service account key (a `.json` file); for DeepL,
+   paste your **Auth key** and click **Connect**. Cicero shows what it connected to.
 2. Click **Browse…** next to **Translate** and choose a `.pptx`, `.docx` or `.pdf` file.
 3. Choose the language in **Into**. Leave **From** on *Detect automatically* or pick it.
 4. Check the **Save as** path (it defaults to `<name> (<language>).pptx` next to the original).
@@ -118,7 +124,7 @@ what is and isn't translated, and troubleshooting.
 |------|--------------|
 | 1. Reading | The file is searched for paragraphs with letters in them: on slides, shapes (including inside groups), table cells, SmartArt and notes; in Word, the body, tables, text boxes, headers, footers and notes; in a PDF, each block of text. |
 | 2. Packing | Each paragraph's runs are wrapped in numbered `<span>` tags, so the translator sees one sentence but knows which words belonged to which run. |
-| 3. Translating | Each distinct paragraph is sent to Cloud Translation v3 once, in batches of up to 100 (10 000 characters). |
+| 3. Translating | Each distinct paragraph is sent once, in batches (Google Cloud Translation v3: up to 100 paragraphs; DeepL: up to 50), with HTML tag handling so the run markers survive. |
 | 4. Saving | Each translation is split back into its runs, keeping their formatting (in a PDF, the original text is removed and the translation laid out in its place), and the copy is saved through a temporary file. |
 
 More detail is in [ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -143,7 +149,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-The tests use a fake translator and never contact Google. See
+The tests use fake translators and never contact Google or DeepL. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the project layout and conventions.
 
 ## Project structure
@@ -161,6 +167,8 @@ cicero-translator/
 │   │   ├── pdf.py           replacing text in a .pdf
 │   │   ├── segments.py      packing runs into HTML and unpacking the translation
 │   │   ├── translator.py    Google Cloud Translation v3 client, batching, error messages
+│   │   ├── deepl_engine.py  DeepL client
+│   │   ├── secrets.py       the DeepL key in the system credential store
 │   │   ├── credentials.py   service account keys and Application Default Credentials
 │   │   ├── review.py        the optional .csv review spreadsheet
 │   │   ├── settings.py      remembered choices

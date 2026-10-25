@@ -13,7 +13,7 @@ from cicero.core.errors import CiceroError, OperationCancelled
 from cicero.core.blocks import apply
 from cicero.core.documents import open_document
 from cicero.core.review import review_path_for, write_review
-from cicero.core.translator import Translator, batches
+from cicero.core.translator import MAX_CHARACTERS_PER_REQUEST, MAX_SEGMENTS_PER_REQUEST, Translator, batches
 
 log = logging.getLogger(__name__)
 
@@ -160,7 +160,9 @@ class TranslationJob:
         done = paragraphs_done = 0
         self._set_progress(Phase.TRANSLATING, characters_total=total, paragraphs_total=len(blocks),
                            pages_total=result.pages, unit=result.unit)
-        for indexes in batches(segments):
+        limits = (getattr(self.translator, "max_segments", MAX_SEGMENTS_PER_REQUEST),
+                  getattr(self.translator, "max_characters", MAX_CHARACTERS_PER_REQUEST))
+        for indexes in batches(segments, *limits):
             self._check_cancelled()
             chunk = [segments[index] for index in indexes]
             translations = self.translator.translate(chunk, options.target_language, options.source_language)

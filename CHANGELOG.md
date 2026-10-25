@@ -25,6 +25,10 @@ All notable changes to this project are documented here. The format follows
   untouched. Longer translations use the free space around them before being
   shrunk. Scanned and password-protected PDFs are explained.
   ([#19](https://github.com/carloslinares-eu/cicero/issues/19))
+- DeepL as an alternative translation service (Free and Pro), chosen in the
+  window. Its key can be remembered in the system credential store, the
+  connection line shows the character usage, and each service remembers its own
+  languages. ([#9](https://github.com/carloslinares-eu/cicero/issues/9))
 - Identical paragraphs, such as a footer repeated on every slide, are sent to
   Google once and the translation reused, which lowers the cost.
 - The progress bar ([#15](https://github.com/carloslinares-eu/cicero/issues/15))
