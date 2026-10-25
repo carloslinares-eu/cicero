@@ -33,7 +33,7 @@ def create_root() -> tk.Tk:
     if sys.platform == "win32":
         _prepare_windows()
     root = tk.Tk(className=__app_name__)
-    root.title(f"{__app_name__} - PowerPoint Translator")
+    root.title(f"{__app_name__} - Document Translator")
     apply_window_icon(root)
     return root
 

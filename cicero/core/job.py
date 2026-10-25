@@ -10,9 +10,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from cicero.core.errors import CiceroError, OperationCancelled
-from cicero.core.presentation import apply, collect_blocks, open_presentation, save_presentation
+from cicero.core.blocks import apply
+from cicero.core.documents import open_document
 from cicero.core.review import review_path_for, write_review
-from cicero.core.translator import Translator, batches
+from cicero.core.translator import MAX_CHARACTERS_PER_REQUEST, MAX_SEGMENTS_PER_REQUEST, Translator, batches
 
 log = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class JobOptions:
     target_language: str
     source_language: str | None = None  # None: let Google detect it
     write_review: bool = False
+    include_masters: bool = False  # also translate slide masters and layouts
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +41,13 @@ class Progress:
     phase: Phase
     characters_done: int = 0
     characters_total: int = 0
+    paragraphs_done: int = 0
+    paragraphs_total: int = 0
+    page: int = 0  # slide or page the last translated paragraph is on (0: masters, or no pages)
+    pages_total: int = 0
+    unit: str | None = None  # what pages are called: "slide", "page", or None for Word documents
+    elapsed: float = 0.0  # seconds since the job started
+    translating_for: float = 0.0  # seconds spent in the translating phase so far
 
     @property
     def fraction(self) -> float:
@@ -48,12 +57,22 @@ class Progress:
             return 0.0
         return min(self.characters_done / self.characters_total, 1.0)
 
+    @property
+    def remaining(self) -> float | None:
+        """Estimated seconds left, from the speed so far. None until the first request has come back."""
+        if self.phase is not Phase.TRANSLATING or self.characters_done <= 0 or self.translating_for <= 0:
+            return None
+        rate = self.characters_done / self.translating_for
+        return max(self.characters_total - self.characters_done, 0) / rate
+
 
 @dataclass(slots=True)
 class JobResult:
     output_path: Path | None = None
     review_path: Path | None = None
-    slides: int = 0
+    kind: str = "document"
+    unit: str | None = None
+    pages: int = 0  # slides in a presentation, pages in a PDF, 0 for Word documents
     paragraphs: int = 0
     characters: int = 0  # characters sent to Google, which is what it bills for
     elapsed: float = 0.0
@@ -75,6 +94,7 @@ class TranslationJob:
         self._cancel = threading.Event()
         self._lock = threading.Lock()
         self._progress = Progress(Phase.IDLE)
+        self._started = self._translating_since = time.monotonic()
 
     @property
     def progress(self) -> Progress:
@@ -89,9 +109,18 @@ class TranslationJob:
     def cancelled(self) -> bool:
         return self._cancel.is_set()
 
-    def _set_progress(self, phase: Phase, done: int = 0, total: int = 0) -> None:
+    def _set_progress(self, phase: Phase, **counters) -> None:
+        now = time.monotonic()
         with self._lock:
-            self._progress = Progress(phase, done, total)
+            previous = self._progress
+            if phase is Phase.TRANSLATING and previous.phase is not Phase.TRANSLATING:
+                self._translating_since = now
+            values = {name: getattr(previous, name) for name in (
+                "characters_done", "characters_total", "paragraphs_done", "paragraphs_total", "page", "pages_total", "unit")}
+            values.update(counters)
+            self._progress = Progress(
+                phase, **values, elapsed=now - self._started,
+                translating_for=now - self._translating_since if phase is Phase.TRANSLATING else 0.0)
 
     def _check_cancelled(self) -> None:
         if self._cancel.is_set():
@@ -99,7 +128,7 @@ class TranslationJob:
 
     def run(self) -> JobResult:
         result = JobResult()
-        started = time.monotonic()
+        started = self._started = time.monotonic()
         try:
             self._run(result)
         except OperationCancelled:
@@ -116,33 +145,45 @@ class TranslationJob:
     def _run(self, result: JobResult) -> None:
         options = self.options
         self._set_progress(Phase.READING)
-        presentation = open_presentation(options.input_path)
-        blocks = collect_blocks(presentation)
-        result.slides = len(presentation.slides)
+        document = open_document(options.input_path, include_masters=options.include_masters)
+        blocks = document.blocks
+        result.kind, result.unit, result.pages = document.kind, document.unit, document.page_count
         result.paragraphs = len(blocks)
 
-        segments = [block.source_html for block in blocks]
+        # Identical paragraphs (a footer on every slide, SmartArt text that is also in its
+        # cached drawing) are sent once and the translation is reused.
+        owners: dict[str, list[int]] = {}
+        for index, block in enumerate(blocks):
+            owners.setdefault(block.source_html, []).append(index)
+        segments = list(owners)
         total = sum(len(segment) for segment in segments)
-        done = 0
-        self._set_progress(Phase.TRANSLATING, done, total)
-        for indexes in batches(segments):
+        done = paragraphs_done = 0
+        self._set_progress(Phase.TRANSLATING, characters_total=total, paragraphs_total=len(blocks),
+                           pages_total=result.pages, unit=result.unit)
+        limits = (getattr(self.translator, "max_segments", MAX_SEGMENTS_PER_REQUEST),
+                  getattr(self.translator, "max_characters", MAX_CHARACTERS_PER_REQUEST))
+        for indexes in batches(segments, *limits):
             self._check_cancelled()
             chunk = [segments[index] for index in indexes]
             translations = self.translator.translate(chunk, options.target_language, options.source_language)
-            for index, translated in zip(indexes, translations):
-                apply(blocks[index], translated)
+            for segment, translated in zip(chunk, translations):
+                for index in owners[segment]:
+                    apply(blocks[index], translated)
+                paragraphs_done += len(owners[segment])
             done += sum(len(segment) for segment in chunk)
             result.characters = done
-            self._set_progress(Phase.TRANSLATING, done, total)
+            self._set_progress(Phase.TRANSLATING, characters_done=done, paragraphs_done=paragraphs_done,
+                               page=blocks[owners[chunk[-1]][0]].page)
 
         self._check_cancelled()
-        self._set_progress(Phase.SAVING, total, total)
-        save_presentation(presentation, options.output_path)
+        self._set_progress(Phase.SAVING, characters_done=total)
+        document.save(options.output_path)
         result.output_path = options.output_path
+        result.warnings.extend(document.warnings)
         if options.write_review:
             review = review_path_for(options.output_path)
             try:
-                write_review(review, blocks)
+                write_review(review, blocks, document.unit)
                 result.review_path = review
             except CiceroError as exc:  # the presentation itself was saved; don't report failure
                 result.warnings.append(str(exc))

@@ -6,10 +6,8 @@ import csv
 from collections.abc import Iterable
 from pathlib import Path
 
-from cicero.core.errors import PresentationError
-from cicero.core.presentation import TextBlock
-
-COLUMNS = ["Slide", "Location", "Original", "Translation"]
+from cicero.core.blocks import TextBlock
+from cicero.core.errors import DocumentError
 
 
 def review_path_for(output: str | Path) -> Path:
@@ -17,13 +15,14 @@ def review_path_for(output: str | Path) -> Path:
     return Path(output).with_suffix(".csv")
 
 
-def write_review(path: str | Path, blocks: Iterable[TextBlock]) -> None:
+def write_review(path: str | Path, blocks: Iterable[TextBlock], unit: str | None = "slide") -> None:
+    """One row per paragraph. ``unit`` names the first column ("slide", "page"); None leaves it out."""
     # utf-8-sig so Excel recognises the encoding and accents display correctly.
     try:
         with open(path, "w", newline="", encoding="utf-8-sig") as file:
             writer = csv.writer(file)
-            writer.writerow(COLUMNS)
+            writer.writerow(([unit.capitalize()] if unit else []) + ["Location", "Original", "Translation"])
             for block in blocks:
-                writer.writerow([block.slide, block.location, block.original, block.translation])
+                writer.writerow(([block.page] if unit else []) + [block.location, block.original, block.translation])
     except OSError as exc:
-        raise PresentationError(f"Can't write the review file:\n{path}\n\n{exc}") from None
+        raise DocumentError(f"Can't write the review file:\n{path}\n\n{exc}") from None

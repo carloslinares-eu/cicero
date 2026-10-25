@@ -7,8 +7,9 @@ paragraph is sent as HTML, each run wrapped in ``<span id="N">``. Google Cloud T
 keeps tags in place and moves them with the words they wrap, so the translated text of
 each run can be put back into the run it came from, keeping its formatting.
 
-Whitespace at the edges of runs and tabs inside them would be lost in HTML, so edges are
-stripped before sending and restored afterwards, and tabs travel as empty marker tags.
+Whitespace at the edges of runs, and tabs and line breaks inside them, would be lost in
+HTML, so edges are stripped before sending and restored afterwards, tabs travel as empty
+marker tags and line breaks as ``<br>``.
 """
 
 from __future__ import annotations
@@ -35,10 +36,11 @@ def split_edges(text: str) -> tuple[str, str, str]:
 
 def encode_runs(texts: list[str]) -> str:
     """Join run texts into one HTML string. ``texts`` should already have their edges stripped."""
-    return "".join(
-        f'<span id="{index}">{html.escape(text, quote=False).replace(chr(9), _TAB_TAG)}</span>'
-        for index, text in enumerate(texts)
-    )
+    return "".join(f'<span id="{index}">{_escape(text)}</span>' for index, text in enumerate(texts))
+
+
+def _escape(text: str) -> str:
+    return html.escape(text, quote=False).replace("\t", _TAB_TAG).replace("\n", "<br>")
 
 
 def decode_runs(translated: str, count: int) -> list[str]:
@@ -50,7 +52,7 @@ def decode_runs(translated: str, count: int) -> list[str]:
     parser = _RunParser(count)
     parser.feed(translated)
     parser.close()
-    return [re.sub(r"[ \r\n]+", " ", "".join(parts)).strip(" ") for parts in parser.parts]
+    return [re.sub(r" *\n *", "\n", "".join(parts)).strip(" ") for parts in parser.parts]
 
 
 class _RunParser(HTMLParser):
@@ -78,7 +80,7 @@ class _RunParser(HTMLParser):
             if candidate < len(self.parts):
                 index = candidate
         if tag == "br":  # void element, never closed
-            self.parts[self._current()].append(" ")
+            self.parts[self._current()].append("\n")
             return
         self._stack.append(index)
 
@@ -89,4 +91,5 @@ class _RunParser(HTMLParser):
                 self._last = index
 
     def handle_data(self, data: str) -> None:
-        self.parts[self._current()].append(data)
+        # Whitespace in HTML text is insignificant: line breaks only come from <br>.
+        self.parts[self._current()].append(re.sub(r"[ \r\n]+", " ", data))

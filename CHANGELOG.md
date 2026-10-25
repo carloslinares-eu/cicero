@@ -4,6 +4,36 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Status bar with counters: slide, paragraphs and characters done out of the
+  total, elapsed time and an estimate of the time left. It keeps the totals when
+  the job ends. ([#16](https://github.com/carloslinares-eu/cicero/issues/16))
+- SmartArt text is translated, in both the diagram data and PowerPoint's cached
+  drawing, keeping its formatting. Shapes inside shapes (groups, groups of groups)
+  were already handled in 2.0.0. ([#17](https://github.com/carloslinares-eu/cicero/issues/17))
+- Option to also translate slide masters and layouts: shared text such as
+  footers and labels, and the placeholder prompts.
+  ([#10](https://github.com/carloslinares-eu/cicero/issues/10))
+- Word documents (`.docx`): body text, tables (also nested), text boxes,
+  headers, footers, footnotes, endnotes and comments, keeping run formatting,
+  links and line breaks. ([#11](https://github.com/carloslinares-eu/cicero/issues/11))
+- PDF files: each block of text is replaced in place with its translation,
+  keeping font size, weight, style and colour, and leaving pictures and drawings
+  untouched. Longer translations use the free space around them before being
+  shrunk. Scanned and password-protected PDFs are explained.
+  ([#19](https://github.com/carloslinares-eu/cicero/issues/19))
+- DeepL as an alternative translation service (Free and Pro), chosen in the
+  window. Its key can be remembered in the system credential store, the
+  connection line shows the character usage, and each service remembers its own
+  languages. ([#9](https://github.com/carloslinares-eu/cicero/issues/9))
+- Identical paragraphs, such as a footer repeated on every slide, are sent to
+  Google once and the translation reused, which lowers the cost.
+- The progress bar ([#15](https://github.com/carloslinares-eu/cicero/issues/15))
+  arrived in 2.0.0; the status line next to it now shows the percentage.
+
 ## [2.0.0] - 2026-10-25
 
 A rewrite on current libraries. The `cicero` package keeps its name but every module is new.

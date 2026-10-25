@@ -47,3 +47,10 @@ def test_needs_translation():
     assert needs_translation("日本語")
     assert not needs_translation("2024 – 42 %")
     assert not needs_translation("•")
+
+
+def test_line_breaks_survive_and_source_newlines_are_whitespace():
+    encoded = encode_runs(["Carlos\nMadrid"])
+    assert encoded == '<span id="0">Carlos<br>Madrid</span>'
+    assert decode_runs('<span id="0">Carlos <br> Madrid</span>', 1) == ["Carlos\nMadrid"]
+    assert decode_runs('<span id="0">one\n  two</span>', 1) == ["one two"]
