@@ -1,0 +1,4 @@
+# Tools for working on Cicero (the app itself needs none of these).
+-r requirements.txt
+pytest==9.1.1          # running the test suite
+pyinstaller==6.22.3    # building a standalone executable (packaging/cicero.spec)

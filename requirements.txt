@@ -1,34 +1,9 @@
-cachetools==4.2.2
-certifi==2020.12.5
-chardet==4.0.0
-colorama==0.4.3
-google-api-core==1.25.1
-google-auth==1.24.0
-google-cloud-core==1.5.0
-google-cloud-translate==3.0.2
-googleapis-common-protos==1.52.0
-idna==2.10
-libcst==0.3.18
-lxml==4.6.3
-mypy-extensions==0.4.3
-Pillow==8.2.0
-proto-plus==1.18.1
-protobuf==3.15.8
-pyasn1==0.4.8
-pyasn1-modules==0.2.8
-python-pptx==0.6.18
-pytz==2021.1
-PyYAML==5.4.1
-requests==2.25.1
-rsa==4.7.2
-six==1.14.0
-typing-extensions==3.10.0.0
-typing-inspect==0.6.0
-urllib3==1.26.4
-XlsxWriter==1.4.0
+google-cloud-translate==3.28.0  # Cloud Translation API v3 client (pulls in google-auth, grpcio, protobuf)
+python-pptx==1.0.2              # reading and writing .pptx files (pulls in lxml, Pillow, XlsxWriter)
 
-pyinstaller~=4.3
-future~=0.18.2
-setuptools~=53.0.0
-PyPDF4~=1.27.0
-pandas~=1.2.4
+# Cicero also needs Tkinter, which ships with the python.org installers for
+# Windows and macOS. On Linux install it separately, e.g.
+#   Debian/Ubuntu:  sudo apt install python3-tk
+#   Fedora:         sudo dnf install python3-tkinter
+#
+# For development tools (tests, building the .exe) see requirements-dev.txt.
