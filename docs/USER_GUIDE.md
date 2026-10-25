@@ -103,9 +103,9 @@ open it.
 |------------|----------------|
 | Slide titles and placeholders | Text inside pictures |
 | Text boxes and shapes, including inside groups (and groups of groups) | Charts (titles, labels, data) |
-| Table cells | SmartArt |
-| Speaker notes | Slide masters and layouts |
-| | Comments |
+| Table cells | Slide masters and layouts |
+| SmartArt | Comments |
+| Speaker notes | |
 | | Text with no letters: numbers, dates such as `2024`, symbols, bullets |
 
 Each paragraph keeps its formatting. When a paragraph mixes formats (a bold word,

@@ -24,7 +24,9 @@ changed.
   so the translator sees full sentences, and the translated words are put back
   into the original runs, so a bold word stays bold.
 - **Everything on the slide.** Titles, placeholders, text boxes, shapes nested in
-  groups, table cells and speaker notes.
+  groups, table cells, SmartArt and speaker notes.
+- **Repeated text is translated once.** A footer on every slide is sent to Google
+  (and billed) only once.
 - **Any language Google supports** (about 190), with automatic detection of the
   source language. Type in the language box to filter the list.
 - **Only pays for words.** Numbers, symbols and empty text aren't sent.
@@ -107,9 +109,9 @@ what is and isn't translated, and troubleshooting.
 
 | Step | What happens |
 |------|--------------|
-| 1. Reading | Every slide is searched for paragraphs with letters in them: shapes (including inside groups), table cells and speaker notes. |
+| 1. Reading | Every slide is searched for paragraphs with letters in them: shapes (including inside groups), table cells, SmartArt and speaker notes. |
 | 2. Packing | Each paragraph's runs are wrapped in numbered `<span>` tags, so the translator sees one sentence but knows which words belonged to which run. |
-| 3. Translating | Paragraphs are sent to Cloud Translation v3 in batches of up to 100 (10 000 characters). |
+| 3. Translating | Each distinct paragraph is sent to Cloud Translation v3 once, in batches of up to 100 (10 000 characters). |
 | 4. Saving | Each translation is split back into its runs, keeping their formatting, and the copy is saved through a temporary file. |
 
 More detail is in [ARCHITECTURE.md](docs/ARCHITECTURE.md).

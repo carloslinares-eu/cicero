@@ -11,6 +11,11 @@ All notable changes to this project are documented here. The format follows
 - Status bar with counters: slide, paragraphs and characters done out of the
   total, elapsed time and an estimate of the time left. It keeps the totals when
   the job ends. ([#16](https://github.com/carloslinares-eu/cicero/issues/16))
+- SmartArt text is translated, in both the diagram data and PowerPoint's cached
+  drawing, keeping its formatting. Shapes inside shapes (groups, groups of groups)
+  were already handled in 2.0.0. ([#17](https://github.com/carloslinares-eu/cicero/issues/17))
+- Identical paragraphs, such as a footer repeated on every slide, are sent to
+  Google once and the translation reused, which lowers the cost.
 - The progress bar ([#15](https://github.com/carloslinares-eu/cicero/issues/15))
   arrived in 2.0.0; the status line next to it now shows the percentage.
 

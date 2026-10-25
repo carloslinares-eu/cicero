@@ -77,3 +77,45 @@ def sample_deck(tmp_path: Path) -> Path:
     path = tmp_path / "deck.pptx"
     deck.save(path)
     return path
+
+
+SMARTART_DATA = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<dgm:dataModel xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram"
+    xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><dgm:ptLst>{points}</dgm:ptLst></dgm:dataModel>"""
+SMARTART_POINT = ('<dgm:pt modelId="{{{index}}}"><dgm:t><a:bodyPr/><a:p><a:r><a:rPr lang="en-US" b="1"/>'
+                  '<a:t>{text}</a:t></a:r></a:p></dgm:t></dgm:pt>')
+SMARTART_DRAWING = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<dsp:drawing xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram"
+    xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><dsp:spTree>{shapes}</dsp:spTree></dsp:drawing>"""
+SMARTART_SHAPE = ('<dsp:sp modelId="{{{index}}}"><dsp:txBody><a:bodyPr/><a:p><a:r><a:rPr lang="en-US"/>'
+                  '<a:t>{text}</a:t></a:r></a:p></dsp:txBody></dsp:sp>')
+
+
+def add_smartart(slide, texts: list[str], number: int = 1) -> None:
+    """Attach SmartArt text parts to a slide the way PowerPoint stores them (data model plus cached drawing)."""
+    from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+    from pptx.opc.package import Part
+    from pptx.opc.packuri import PackURI
+
+    from cicero.core.presentation import RT_DIAGRAM_DRAWING
+
+    package = slide.part.package
+    data = SMARTART_DATA.format(points="".join(SMARTART_POINT.format(index=i, text=t) for i, t in enumerate(texts)))
+    drawing = SMARTART_DRAWING.format(shapes="".join(SMARTART_SHAPE.format(index=i, text=t)
+                                                     for i, t in enumerate(texts)))
+    slide.part.relate_to(Part(PackURI(f"/ppt/diagrams/data{number}.xml"),
+                              "application/vnd.openxmlformats-officedocument.drawingml.diagramData+xml",
+                              package, data.encode()), RT.DIAGRAM_DATA)
+    slide.part.relate_to(Part(PackURI(f"/ppt/diagrams/drawing{number}.xml"),
+                              "application/vnd.ms-office.drawingml.diagramDrawing+xml",
+                              package, drawing.encode()), RT_DIAGRAM_DRAWING)
+
+
+@pytest.fixture
+def smartart_deck(tmp_path: Path) -> Path:
+    deck = Presentation()
+    slide = deck.slides.add_slide(deck.slide_layouts[6])
+    add_smartart(slide, ["Plan", "Build", "Ship &amp; learn"])  # XML-escaped
+    path = tmp_path / "smartart.pptx"
+    deck.save(path)
+    return path

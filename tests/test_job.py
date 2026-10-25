@@ -113,3 +113,35 @@ def test_remaining_time_follows_the_speed_so_far():
     progress = Progress(Phase.TRANSLATING, characters_done=250, characters_total=1000, translating_for=10)
     assert progress.remaining == 30
     assert Progress(Phase.SAVING, characters_done=1000, characters_total=1000, translating_for=10).remaining is None
+
+
+def smartart_texts(path: Path) -> dict[str, list[str]]:
+    from lxml import etree
+
+    from cicero.core.presentation import SMARTART_RELATIONSHIPS
+
+    slide_part = Presentation(str(path)).slides[0].part
+    texts = {}
+    for relationship in slide_part.rels.values():
+        if relationship.reltype in SMARTART_RELATIONSHIPS:
+            root = etree.fromstring(relationship.target_part.blob)
+            texts[relationship.target_part.partname.rsplit("/", 1)[-1]] = [
+                node.text for node in root.iter("{http://schemas.openxmlformats.org/drawingml/2006/main}t")]
+    return texts
+
+
+def test_translates_smartart_data_and_cached_drawing(fake_translator, smartart_deck):
+    _, result, output = run_job(fake_translator, smartart_deck)
+    assert result.succeeded, result.error
+    assert smartart_texts(output) == {"data1.xml": ["PLAN", "BUILD", "SHIP & LEARN"],
+                                      "drawing1.xml": ["PLAN", "BUILD", "SHIP & LEARN"]}
+    # The drawing repeats the data's text, so each paragraph is only sent (and billed) once.
+    sent = [segment for request in fake_translator.requests for segment in request[0]]
+    assert len(sent) == 3 and result.paragraphs == 6
+
+
+def test_smartart_formatting_is_kept(fake_translator, smartart_deck):
+    _, _, output = run_job(fake_translator, smartart_deck)
+    slide_part = Presentation(str(output)).slides[0].part
+    data = next(r.target_part for r in slide_part.rels.values() if r.target_part.partname.endswith("data1.xml"))
+    assert b'b="1"' in data.blob

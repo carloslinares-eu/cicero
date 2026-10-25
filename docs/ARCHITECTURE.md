@@ -9,7 +9,7 @@ cicero/
 ├── app.py            main(): Windows DPI/taskbar setup, Tk root, icon, MainWindow
 ├── core/
 │   ├── job.py           TranslationJob: read → translate in batches → save; Progress, JobResult
-│   ├── presentation.py  open/save, collect_blocks(), apply()
+│   ├── presentation.py  PptxDocument: open, find paragraphs (incl. SmartArt), save; apply()
 │   ├── segments.py      encode_runs(), decode_runs(): runs ⇄ one HTML string
 │   ├── translator.py    Translator protocol, GoogleTranslator (v3), batches(), describe_error()
 │   ├── credentials.py   load_key_file(), load_default() → CloudAccount
@@ -25,17 +25,32 @@ cicero/
 ## From slide to translation and back
 
 ```text
- Presentation ─► iter_text_frames()  every slide: shapes (recursing into groups), table cells, notes
-             ─► collect_blocks()     one TextBlock per paragraph that has letters in it
+ PptxDocument ─► iter_text_frames()  every slide: shapes (recursing into groups), table cells
+             ─► _smartart_parts()   SmartArt data model and cached drawing; then notes
+             ─► make_block()         one TextBlock per paragraph that has letters in it
                    runs:   ["Hello ", "bold", " world"]           (formatting lives on the runs)
                    edges:  [("", " "), ("", ""), (" ", "")]        (outer whitespace, restored later)
                    html:   <span id="0">Hello</span><span id="1">bold</span><span id="2">world</span>
+             ─► owners               identical HTML is sent once and applied to every copy
              ─► batches()            ≤ 100 segments and ≤ 10 000 characters per request
              ─► translate_text(mime_type="text/html")
                    <span id="0">Hola</span> <span id="2">mundo</span> <span id="1">negrita</span>
              ─► decode_runs()        ["Hola", "negrita", "mundo"] → run.text = edge + text + edge
-             ─► save_presentation()  temp file + os.replace
+             ─► PptxDocument.save()  SmartArt XML written back, temp file + os.replace
 ```
+
+### SmartArt
+
+python-pptx has no SmartArt API and loads its parts as raw bytes. A SmartArt graphic
+keeps its text in a *data model* part (`/ppt/diagrams/dataN.xml`, related from the
+slide with `…/relationships/diagramData`) and PowerPoint also caches the rendered
+graphic, text included, in a *drawing* part (`…/2007/relationships/diagramDrawing`).
+Both are found through the slide's relationships, parsed with python-pptx's own
+`parse_xml` (so every `<a:p>` is a `CT_TextParagraph` and the normal `_Paragraph` /
+`_Run` text API works on them), translated like any other paragraph, and serialised
+back into the part before saving (`_XmlBlob`). Translating the cached drawing too
+means the graphic shows the translation even before PowerPoint redraws it; since the
+two parts hold the same paragraphs, deduplication sends each one only once.
 
 ### Why HTML spans
 

@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from cicero.core.errors import CiceroError, OperationCancelled
-from cicero.core.presentation import apply, collect_blocks, open_presentation, save_presentation
+from cicero.core.presentation import PptxDocument, apply
 from cicero.core.review import review_path_for, write_review
 from cicero.core.translator import Translator, batches
 
@@ -140,30 +140,37 @@ class TranslationJob:
     def _run(self, result: JobResult) -> None:
         options = self.options
         self._set_progress(Phase.READING)
-        presentation = open_presentation(options.input_path)
-        blocks = collect_blocks(presentation)
-        result.slides = len(presentation.slides)
+        document = PptxDocument(options.input_path)
+        blocks = document.blocks
+        result.slides = document.slide_count
         result.paragraphs = len(blocks)
 
-        segments = [block.source_html for block in blocks]
+        # Identical paragraphs (a footer on every slide, SmartArt text that is also in its
+        # cached drawing) are sent once and the translation is reused.
+        owners: dict[str, list[int]] = {}
+        for index, block in enumerate(blocks):
+            owners.setdefault(block.source_html, []).append(index)
+        segments = list(owners)
         total = sum(len(segment) for segment in segments)
-        done = 0
+        done = paragraphs_done = 0
         self._set_progress(Phase.TRANSLATING, characters_total=total, paragraphs_total=len(blocks),
                            slides_total=result.slides)
         for indexes in batches(segments):
             self._check_cancelled()
             chunk = [segments[index] for index in indexes]
             translations = self.translator.translate(chunk, options.target_language, options.source_language)
-            for index, translated in zip(indexes, translations):
-                apply(blocks[index], translated)
+            for segment, translated in zip(chunk, translations):
+                for index in owners[segment]:
+                    apply(blocks[index], translated)
+                paragraphs_done += len(owners[segment])
             done += sum(len(segment) for segment in chunk)
             result.characters = done
-            self._set_progress(Phase.TRANSLATING, characters_done=done, paragraphs_done=indexes[-1] + 1,
-                               slide=blocks[indexes[-1]].slide)
+            self._set_progress(Phase.TRANSLATING, characters_done=done, paragraphs_done=paragraphs_done,
+                               slide=blocks[owners[chunk[-1]][0]].slide)
 
         self._check_cancelled()
         self._set_progress(Phase.SAVING, characters_done=total)
-        save_presentation(presentation, options.output_path)
+        document.save(options.output_path)
         result.output_path = options.output_path
         if options.write_review:
             review = review_path_for(options.output_path)
