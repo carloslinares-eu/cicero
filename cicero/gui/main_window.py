@@ -11,9 +11,9 @@ import threading
 import tkinter as tk
 from collections.abc import Callable
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, font, messagebox, ttk
 
-from cicero import __app_name__
+from cicero import __app_name__, __version__
 from cicero.core.credentials import CloudAccount, load_default, load_key_file
 from cicero.core.deepl_engine import DeepLTranslator
 from cicero.core.documents import SUPPORTED, is_supported
@@ -22,11 +22,14 @@ from cicero.core.job import JobOptions, JobResult, Phase, Progress, TranslationJ
 from cicero.core.secrets import load_deepl_key, save_deepl_key
 from cicero.core.settings import Settings
 from cicero.core.translator import GoogleTranslator, Language, Translator
+from cicero.gui.icon import load_image
 from cicero.gui.widgets import LanguageBox
 
 log = logging.getLogger(__name__)
 
 POLL_MS = 100
+MUTED = "#5F5F5F"
+TAGLINE = "Translates presentations, Word documents and PDFs, keeping their layout and formatting."
 AUTOMATIC = "Detect automatically"
 KEY_FILE_TYPES = [("Google Cloud key file", "*.json"), ("All files", "*.*")]
 ENGINES = {"google": "Google Cloud Translation", "deepl": "DeepL"}
@@ -73,9 +76,10 @@ class MainWindow:
         outer = ttk.Frame(root, padding=12)
         outer.grid(sticky="nsew")
         outer.columnconfigure(0, weight=1)
+        self._build_header(outer, row=0)
 
         service = ttk.LabelFrame(outer, text="Translation service", padding=10)
-        service.grid(row=0, column=0, sticky="ew")
+        service.grid(row=1, column=0, sticky="ew")
         service.columnconfigure(1, weight=1)
         ttk.Label(service, text="Service").grid(row=0, column=0, sticky="w", padx=(0, 8))
         self.engine_box = ttk.Combobox(service, textvariable=self.engine_name, values=list(ENGINES.values()),
@@ -103,7 +107,7 @@ class MainWindow:
         self.connect_button.grid(row=2, column=2, padx=(8, 0), pady=(8, 0), sticky="ew")
 
         job = ttk.LabelFrame(outer, text="Document", padding=10)
-        job.grid(row=1, column=0, sticky="ew", pady=(10, 0))
+        job.grid(row=2, column=0, sticky="ew", pady=(10, 0))
         job.columnconfigure(1, weight=1)
         ttk.Label(job, text="Translate").grid(row=0, column=0, sticky="w", padx=(0, 8))
         self.input_entry = ttk.Entry(job, textvariable=self.input_path)
@@ -138,9 +142,9 @@ class MainWindow:
         self.masters_check.grid(row=5, column=0, columnspan=3, sticky="w", pady=(4, 0))
 
         self.progress = ttk.Progressbar(outer, maximum=1.0)
-        self.progress.grid(row=2, column=0, sticky="ew", pady=(14, 4))
+        self.progress.grid(row=3, column=0, sticky="ew", pady=(14, 4))
         bottom = ttk.Frame(outer)
-        bottom.grid(row=3, column=0, sticky="ew")
+        bottom.grid(row=4, column=0, sticky="ew")
         bottom.columnconfigure(0, weight=1)
         ttk.Label(bottom, textvariable=self.status_text, wraplength=380).grid(row=0, column=0, sticky="w")
         self.stop_button = ttk.Button(bottom, text="Stop", command=self.stop)
@@ -161,6 +165,24 @@ class MainWindow:
         self.input_path.trace_add("write", lambda *_: self._update_buttons())
         for variable in (self.input_path, self.output_path):
             variable.trace_add("write", lambda *_: self._update_buttons())
+
+    def _build_header(self, parent: ttk.Frame, row: int) -> None:
+        """Logo, name, version and a one-line description at the top of the window."""
+        header = ttk.Frame(parent)
+        header.grid(row=row, column=0, sticky="ew", pady=(0, 12))
+        header.columnconfigure(1, weight=1)
+        title_font = font.nametofont("TkDefaultFont").copy()
+        title_font.configure(size=title_font.cget("size") + 6, weight="bold")
+        self._title_font = title_font  # Tk forgets fonts Python no longer references
+
+        large = self.root.winfo_fpixels("1i") >= 120  # pick the sharper logo on high-DPI screens
+        self._logo = load_image("cicero-64.png" if large else "cicero-48.png", master=self.root)
+        if self._logo is not None:
+            ttk.Label(header, image=self._logo).grid(row=0, column=0, rowspan=2, padx=(0, 12))
+        ttk.Label(header, text=__app_name__, font=title_font).grid(row=0, column=1, sticky="sw")
+        self.version_label = ttk.Label(header, text=f"v{__version__}", foreground=MUTED)
+        self.version_label.grid(row=0, column=2, sticky="ne")
+        ttk.Label(header, text=TAGLINE, foreground=MUTED).grid(row=1, column=1, columnspan=2, sticky="nw")
 
     def _update_buttons(self) -> None:
         running = self.job is not None

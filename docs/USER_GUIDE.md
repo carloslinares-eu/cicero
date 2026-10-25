@@ -64,6 +64,9 @@ Keep the key private, like a password.
 
 ![The Cicero window](images/screenshot.png)
 
+The header shows the version you are running (top right), which is useful when
+reporting a problem.
+
 ### Translation service
 
 - **Service**: *Google Cloud Translation* or *DeepL*. Switching connects to the

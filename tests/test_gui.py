@@ -112,3 +112,10 @@ def test_languages_are_remembered_per_service(window, fake_translator):
     window._on_connected("deepl", fake_translator, [*LANGUAGES, Language("EN-GB", "English (British)")], "test")
     assert window.target_box.code == "EN-GB"
     assert window.settings.languages("google") == ("", "es")
+
+
+def test_header_shows_logo_name_and_version(window):
+    from cicero import __version__
+
+    assert window.version_label.cget("text") == f"v{__version__}"
+    assert window._logo is not None and window._logo.width() in (48, 64)

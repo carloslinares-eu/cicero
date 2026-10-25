@@ -4,9 +4,15 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.1.0] - 2026-10-25
+
+Word documents, PDFs and DeepL join PowerPoint and Google Cloud Translation, along with SmartArt,
+slide masters, a status bar and a new icon.
 
 ### Added
+
+- A header at the top of the window with the Cicero logo, the name, the version
+  and a one-line description. ([#31](https://github.com/carloslinares-eu/cicero/issues/31))
 
 - Status bar with counters: slide, paragraphs and characters done out of the
   total, elapsed time and an estimate of the time left. It keeps the totals when
@@ -33,6 +39,13 @@ All notable changes to this project are documented here. The format follows
   Google once and the translation reused, which lowers the cost.
 - The progress bar ([#15](https://github.com/carloslinares-eu/cicero/issues/15))
   arrived in 2.0.0; the status line next to it now shows the percentage.
+
+### Changed
+
+- New icon: a wise Roman orator with a white beard, a laurel wreath and a toga, in
+  the style of Bloodhound's icon. It is drawn by `scripts/generate_icon.py` and
+  comes in every size Windows uses. The old icon was removed from the repository
+  history. ([#31](https://github.com/carloslinares-eu/cicero/issues/31))
 
 ## [2.0.0] - 2026-10-25
 

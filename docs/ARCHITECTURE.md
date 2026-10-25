@@ -25,7 +25,7 @@ cicero/
 └── gui/
     ├── main_window.py   layout, connecting, starting/stopping jobs, rendering progress
     ├── widgets.py       LanguageBox: combobox that filters as you type
-    └── icon.py          window icon
+    └── icon.py          window icon and the header logo (load_image)
 ```
 
 ## Documents
