@@ -33,8 +33,8 @@ A_P = "{http://schemas.openxmlformats.org/drawingml/2006/main}p"
 class TextBlock:
     """One paragraph to translate: its runs that contain text, and the HTML sent to the translator."""
 
-    slide: int  # 1-based slide number
-    location: str  # shape name, "Table: …", "SmartArt" or "Notes"
+    slide: int  # 1-based slide number; 0 for slide masters and layouts
+    location: str  # shape name, "Table: …", "SmartArt", "Notes", or "Master: …"/"Layout: …" plus the shape
     runs: list[_Run]
     edges: list[tuple[str, str]]  # whitespace stripped from the start and end of each run
     original: str  # the paragraph as plain text
@@ -45,8 +45,9 @@ class TextBlock:
 class PptxDocument:
     """An open presentation, the paragraphs found in it, and how to save it."""
 
-    def __init__(self, path: str | Path) -> None:
+    def __init__(self, path: str | Path, include_masters: bool = False) -> None:
         self.presentation = open_presentation(path)
+        self.include_masters = include_masters
         self._xml_parts: list[_XmlBlob] = []  # parts python-pptx only knows as bytes (SmartArt)
         self.blocks = self._collect()
 
@@ -80,6 +81,15 @@ class PptxDocument:
                 frame = slide.notes_slide.notes_text_frame
                 if frame is not None:
                     yield number, "Notes", frame.paragraphs
+        if self.include_masters:
+            # Text that appears on every slide using a layout (footers, labels, logos as text)
+            # and the placeholder prompts shown while editing ("Click to edit Master title style").
+            for master in self.presentation.slide_masters:
+                masters = [(f"Master: {master.name or 'Slide Master'}", master)]
+                masters += [(f"Layout: {layout.name}", layout) for layout in master.slide_layouts]
+                for owner, container in masters:
+                    for location, frame in iter_text_frames(container):
+                        yield 0, f"{owner} › {location}", frame.paragraphs
 
 
 def make_block(slide: int, location: str, paragraph: _Paragraph) -> TextBlock | None:
@@ -114,7 +124,7 @@ def open_presentation(path: str | Path) -> Presentation:
 
 
 def iter_text_frames(slide) -> Iterator[tuple[str, TextFrame]]:
-    """Text frames of a slide's shapes, looking inside groups and tables."""
+    """Text frames of a slide's (or master's, or layout's) shapes, looking inside groups and tables."""
     for shape in _iter_shapes(slide.shapes):
         if shape.has_text_frame:
             yield shape.name, shape.text_frame

@@ -32,6 +32,7 @@ class JobOptions:
     target_language: str
     source_language: str | None = None  # None: let Google detect it
     write_review: bool = False
+    include_masters: bool = False  # also translate slide masters and layouts
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,7 +141,7 @@ class TranslationJob:
     def _run(self, result: JobResult) -> None:
         options = self.options
         self._set_progress(Phase.READING)
-        document = PptxDocument(options.input_path)
+        document = PptxDocument(options.input_path, include_masters=options.include_masters)
         blocks = document.blocks
         result.slides = document.slide_count
         result.paragraphs = len(blocks)

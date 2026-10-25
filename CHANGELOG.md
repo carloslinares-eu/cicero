@@ -14,6 +14,9 @@ All notable changes to this project are documented here. The format follows
 - SmartArt text is translated, in both the diagram data and PowerPoint's cached
   drawing, keeping its formatting. Shapes inside shapes (groups, groups of groups)
   were already handled in 2.0.0. ([#17](https://github.com/carloslinares-eu/cicero/issues/17))
+- Option to also translate slide masters and layouts: shared text such as
+  footers and labels, and the placeholder prompts.
+  ([#10](https://github.com/carloslinares-eu/cicero/issues/10))
 - Identical paragraphs, such as a footer repeated on every slide, are sent to
   Google once and the translation reused, which lowers the cost.
 - The progress bar ([#15](https://github.com/carloslinares-eu/cicero/issues/15))

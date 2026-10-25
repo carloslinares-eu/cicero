@@ -28,6 +28,7 @@ class Settings:
     source_language: str = ""  # empty means detect automatically
     target_language: str = ""
     write_review: bool = False
+    include_masters: bool = False
     last_folder: str = ""
 
     @classmethod

@@ -27,6 +27,7 @@ cicero/
 ```text
  PptxDocument ─► iter_text_frames()  every slide: shapes (recursing into groups), table cells
              ─► _smartart_parts()   SmartArt data model and cached drawing; then notes
+                                     (+ slide masters and their layouts, as slide 0, when asked)
              ─► make_block()         one TextBlock per paragraph that has letters in it
                    runs:   ["Hello ", "bold", " world"]           (formatting lives on the runs)
                    edges:  [("", " "), ("", ""), (" ", "")]        (outer whitespace, restored later)

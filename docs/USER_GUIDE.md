@@ -75,6 +75,13 @@ never copies the key.
   as the translation. It has one row per paragraph: the slide number, where on
   the slide it is, the original and the translation. It opens in Excel or any
   spreadsheet program and is handy for a proofreader.
+- **Also translate slide masters and layouts**: the slide master and its layouts
+  hold text that appears on every slide using them (a footer, a "Confidential"
+  label, a section name) and the prompts PowerPoint shows in empty placeholders
+  while you edit (*Click to edit Master title style*, *Click to add text*). Turn
+  this on when the presentation is a template, or when that shared text is in the
+  original language. Their rows in the review spreadsheet have slide number 0 and
+  a location such as `Layout: Title Slide › Title 1`.
 
 ### Translating
 
@@ -103,9 +110,10 @@ open it.
 |------------|----------------|
 | Slide titles and placeholders | Text inside pictures |
 | Text boxes and shapes, including inside groups (and groups of groups) | Charts (titles, labels, data) |
-| Table cells | Slide masters and layouts |
-| SmartArt | Comments |
+| Table cells | Comments |
+| SmartArt | |
 | Speaker notes | |
+| Slide masters and layouts, if you ask for it (see below) | |
 | | Text with no letters: numbers, dates such as `2024`, symbols, bullets |
 
 Each paragraph keeps its formatting. When a paragraph mixes formats (a bold word,

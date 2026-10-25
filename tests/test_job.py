@@ -145,3 +145,43 @@ def test_smartart_formatting_is_kept(fake_translator, smartart_deck):
     slide_part = Presentation(str(output)).slides[0].part
     data = next(r.target_part for r in slide_part.rels.values() if r.target_part.partname.endswith("data1.xml"))
     assert b'b="1"' in data.blob
+
+
+def master_texts(path: Path) -> list[str]:
+    from cicero.core.presentation import iter_text_frames
+
+    deck = Presentation(str(path))
+    containers = [master for master in deck.slide_masters]
+    containers += [layout for master in deck.slide_masters for layout in master.slide_layouts]
+    return [frame.text for container in containers for _, frame in iter_text_frames(container)]
+
+
+def test_masters_and_layouts_only_when_asked(fake_translator, sample_deck):
+    import copy
+
+    from pptx.util import Inches
+
+    deck = Presentation(str(sample_deck))
+    box = deck.slides[1].shapes.add_textbox(Inches(0), Inches(7), Inches(3), Inches(0.5))
+    box.text_frame.text = "Confidential"
+    deck.slide_masters[0].shapes._spTree.append(copy.deepcopy(box._element))  # masters have no add_textbox
+    box._element.getparent().remove(box._element)
+    deck.save(sample_deck)
+
+    _, plain, output = run_job(fake_translator, sample_deck)
+    assert "Confidential" in master_texts(output)
+    assert plain.paragraphs == 10
+
+    _, result, output = run_job(fake_translator, sample_deck, include_masters=True)
+    texts = master_texts(output)
+    assert "CONFIDENTIAL" in texts and "CLICK TO EDIT MASTER TITLE STYLE" in texts
+    assert "Confidential" not in texts
+    assert result.paragraphs > 10
+
+
+def test_master_blocks_are_labelled(sample_deck):
+    from cicero.core.presentation import PptxDocument
+
+    blocks = [block for block in PptxDocument(sample_deck, include_masters=True).blocks if block.slide == 0]
+    assert blocks and blocks[0].location.startswith("Master: ")
+    assert any(block.location.startswith("Layout: Title Slide › ") for block in blocks)

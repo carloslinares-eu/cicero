@@ -24,7 +24,8 @@ changed.
   so the translator sees full sentences, and the translated words are put back
   into the original runs, so a bold word stays bold.
 - **Everything on the slide.** Titles, placeholders, text boxes, shapes nested in
-  groups, table cells, SmartArt and speaker notes.
+  groups, table cells, SmartArt and speaker notes, and optionally the slide
+  masters and layouts.
 - **Repeated text is translated once.** A footer on every slide is sent to Google
   (and billed) only once.
 - **Any language Google supports** (about 190), with automatic detection of the

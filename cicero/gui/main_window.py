@@ -43,6 +43,7 @@ class MainWindow:
         self.input_path = tk.StringVar()
         self.output_path = tk.StringVar()
         self.write_review = tk.BooleanVar(value=self.settings.write_review)
+        self.include_masters = tk.BooleanVar(value=self.settings.include_masters)
         self.connection_text = tk.StringVar(value="Not connected")
         self.status_text = tk.StringVar(value="Choose your Google Cloud key file and connect.")
         self.counters = {name: tk.StringVar() for name in ("slides", "paragraphs", "characters", "time")}
@@ -107,6 +108,10 @@ class MainWindow:
             job, text="Also save a review spreadsheet (.csv) with each original paragraph and its translation",
             variable=self.write_review)
         self.review_check.grid(row=4, column=0, columnspan=3, sticky="w", pady=(10, 0))
+        self.masters_check = ttk.Checkbutton(
+            job, text="Also translate slide masters and layouts (footers, labels and placeholder prompts)",
+            variable=self.include_masters)
+        self.masters_check.grid(row=5, column=0, columnspan=3, sticky="w", pady=(4, 0))
 
         self.progress = ttk.Progressbar(outer, maximum=1.0)
         self.progress.grid(row=2, column=0, sticky="ew", pady=(14, 4))
@@ -139,7 +144,8 @@ class MainWindow:
         self.translate_button.state(["!disabled"] if ready and not running else ["disabled"])
         self.stop_button.state(["!disabled"] if running else ["disabled"])
         for widget in (self.key_entry, self.key_browse, self.connect_button, self.input_entry, self.input_browse,
-                       self.output_entry, self.output_browse, self.source_box, self.target_box, self.review_check):
+                       self.output_entry, self.output_browse, self.source_box, self.target_box, self.review_check,
+                       self.masters_check):
             widget.state(["disabled"] if running else ["!disabled"])
 
     # ------------------------------------------------------------ connecting
@@ -269,7 +275,8 @@ class MainWindow:
         if output.exists() and not confirmed and not messagebox.askyesno(
                 __app_name__, f"{output.name} already exists. Replace it?", parent=self.root):
             return None
-        return JobOptions(source, output, self.target_box.code, self.source_box.code, self.write_review.get())
+        return JobOptions(source, output, self.target_box.code, self.source_box.code, self.write_review.get(),
+                          self.include_masters.get())
 
     def start(self) -> None:
         if self.job is not None or self.translator is None:
@@ -280,6 +287,7 @@ class MainWindow:
         self.settings.source_language = options.source_language or ""
         self.settings.target_language = options.target_language
         self.settings.write_review = options.write_review
+        self.settings.include_masters = options.include_masters
         self.settings.save()
 
         job = TranslationJob(self.translator, options)
@@ -344,7 +352,10 @@ class MainWindow:
 
     def _render_counters(self, progress: Progress) -> None:
         if progress.paragraphs_total:
-            self.counters["slides"].set(f"Slide {progress.slide or 1} of {progress.slides_total}")
+            if progress.slide == 0 and progress.paragraphs_done:
+                self.counters["slides"].set("Masters and layouts")
+            else:
+                self.counters["slides"].set(f"Slide {progress.slide or 1} of {progress.slides_total}")
             self.counters["paragraphs"].set(f"Paragraph {progress.paragraphs_done:,} of {progress.paragraphs_total:,}")
             self.counters["characters"].set(f"{progress.characters_done:,} of {progress.characters_total:,} characters")
         remaining = progress.remaining
