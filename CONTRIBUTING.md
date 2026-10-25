@@ -30,6 +30,9 @@ The tests don't need a Google account.
 - Follow the style of the surrounding code: type hints, short docstrings,
   4-space indentation, lines up to about 120 characters.
 - Note user-visible changes in `CHANGELOG.md` under an "Unreleased" heading.
+- The icon is drawn in code by `scripts/generate_icon.py`. Change the design there
+  and run it to regenerate `cicero/assets/` (the `.ico`, and the 256, 64 and 48 px
+  PNGs); don't edit the image files by hand.
 
 ## Updating dependencies
 

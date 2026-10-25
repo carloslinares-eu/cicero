@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="cicero/assets/cicero.png" width="64" alt="Cicero icon">
+  <img src="cicero/assets/cicero-64.png" width="64" alt="Cicero icon: a wise Roman orator with a white beard and a laurel wreath">
 </p>
 
 <h1 align="center">Cicero</h1>
@@ -149,7 +149,9 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-The tests use fake translators and never contact Google or DeepL. See
+The tests use fake translators and never contact Google or DeepL.
+
+The icon is drawn by `scripts/generate_icon.py`; run it again after changing the design. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the project layout and conventions.
 
 ## Project structure
@@ -176,11 +178,12 @@ cicero-translator/
 │   ├── gui/                 Tkinter interface
 │   │   ├── main_window.py   the main window
 │   │   ├── widgets.py       filterable language box
-│   │   └── icon.py
+│   │   └── icon.py          window icon and the logo in the header
 │   └── assets/              icon files
 ├── tests/                   pytest suite
 ├── docs/                    user guide, architecture notes, screenshot
 ├── packaging/               PyInstaller recipe and hooks
+├── scripts/                 icon generator
 ├── main.py                  launcher for `python main.py` and IDEs
 ├── pyproject.toml           package metadata
 └── requirements*.txt        dependencies
