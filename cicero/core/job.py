@@ -39,6 +39,12 @@ class Progress:
     phase: Phase
     characters_done: int = 0
     characters_total: int = 0
+    paragraphs_done: int = 0
+    paragraphs_total: int = 0
+    slide: int = 0  # slide the last translated paragraph is on
+    slides_total: int = 0
+    elapsed: float = 0.0  # seconds since the job started
+    translating_for: float = 0.0  # seconds spent in the translating phase so far
 
     @property
     def fraction(self) -> float:
@@ -47,6 +53,14 @@ class Progress:
         if self.characters_total <= 0:
             return 0.0
         return min(self.characters_done / self.characters_total, 1.0)
+
+    @property
+    def remaining(self) -> float | None:
+        """Estimated seconds left, from the speed so far. None until the first request has come back."""
+        if self.phase is not Phase.TRANSLATING or self.characters_done <= 0 or self.translating_for <= 0:
+            return None
+        rate = self.characters_done / self.translating_for
+        return max(self.characters_total - self.characters_done, 0) / rate
 
 
 @dataclass(slots=True)
@@ -75,6 +89,7 @@ class TranslationJob:
         self._cancel = threading.Event()
         self._lock = threading.Lock()
         self._progress = Progress(Phase.IDLE)
+        self._started = self._translating_since = time.monotonic()
 
     @property
     def progress(self) -> Progress:
@@ -89,9 +104,18 @@ class TranslationJob:
     def cancelled(self) -> bool:
         return self._cancel.is_set()
 
-    def _set_progress(self, phase: Phase, done: int = 0, total: int = 0) -> None:
+    def _set_progress(self, phase: Phase, **counters) -> None:
+        now = time.monotonic()
         with self._lock:
-            self._progress = Progress(phase, done, total)
+            previous = self._progress
+            if phase is Phase.TRANSLATING and previous.phase is not Phase.TRANSLATING:
+                self._translating_since = now
+            values = {name: getattr(previous, name) for name in (
+                "characters_done", "characters_total", "paragraphs_done", "paragraphs_total", "slide", "slides_total")}
+            values.update(counters)
+            self._progress = Progress(
+                phase, **values, elapsed=now - self._started,
+                translating_for=now - self._translating_since if phase is Phase.TRANSLATING else 0.0)
 
     def _check_cancelled(self) -> None:
         if self._cancel.is_set():
@@ -99,7 +123,7 @@ class TranslationJob:
 
     def run(self) -> JobResult:
         result = JobResult()
-        started = time.monotonic()
+        started = self._started = time.monotonic()
         try:
             self._run(result)
         except OperationCancelled:
@@ -124,7 +148,8 @@ class TranslationJob:
         segments = [block.source_html for block in blocks]
         total = sum(len(segment) for segment in segments)
         done = 0
-        self._set_progress(Phase.TRANSLATING, done, total)
+        self._set_progress(Phase.TRANSLATING, characters_total=total, paragraphs_total=len(blocks),
+                           slides_total=result.slides)
         for indexes in batches(segments):
             self._check_cancelled()
             chunk = [segments[index] for index in indexes]
@@ -133,10 +158,11 @@ class TranslationJob:
                 apply(blocks[index], translated)
             done += sum(len(segment) for segment in chunk)
             result.characters = done
-            self._set_progress(Phase.TRANSLATING, done, total)
+            self._set_progress(Phase.TRANSLATING, characters_done=done, paragraphs_done=indexes[-1] + 1,
+                               slide=blocks[indexes[-1]].slide)
 
         self._check_cancelled()
-        self._set_progress(Phase.SAVING, total, total)
+        self._set_progress(Phase.SAVING, characters_done=total)
         save_presentation(presentation, options.output_path)
         result.output_path = options.output_path
         if options.write_review:

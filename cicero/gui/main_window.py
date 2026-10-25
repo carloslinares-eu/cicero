@@ -16,7 +16,7 @@ from tkinter import filedialog, messagebox, ttk
 from cicero import __app_name__
 from cicero.core.credentials import CloudAccount, load_default, load_key_file
 from cicero.core.errors import CiceroError
-from cicero.core.job import JobOptions, JobResult, Phase, TranslationJob
+from cicero.core.job import JobOptions, JobResult, Phase, Progress, TranslationJob
 from cicero.core.settings import Settings
 from cicero.core.translator import GoogleTranslator, Language
 from cicero.gui.widgets import LanguageBox
@@ -45,6 +45,7 @@ class MainWindow:
         self.write_review = tk.BooleanVar(value=self.settings.write_review)
         self.connection_text = tk.StringVar(value="Not connected")
         self.status_text = tk.StringVar(value="Choose your Google Cloud key file and connect.")
+        self.counters = {name: tk.StringVar() for name in ("slides", "paragraphs", "characters", "time")}
 
         self._build()
         self._update_buttons()
@@ -117,6 +118,15 @@ class MainWindow:
         self.stop_button.grid(row=0, column=1, padx=(8, 0))
         self.translate_button = ttk.Button(bottom, text="Translate", command=self.start)
         self.translate_button.grid(row=0, column=2, padx=(8, 0))
+
+        # Status bar: counters for the running job, or what the last one did.
+        ttk.Separator(root, orient="horizontal").grid(row=1, column=0, sticky="ew")
+        status_bar = ttk.Frame(root, padding=(12, 3))
+        status_bar.grid(row=2, column=0, sticky="ew")
+        status_bar.columnconfigure(0, weight=1)
+        for column, variable in enumerate(self.counters.values(), start=1):
+            ttk.Label(status_bar, textvariable=variable, foreground="gray30").grid(
+                row=0, column=column, padx=(14, 0), sticky="e")
 
         self.input_path.trace_add("write", lambda *_: self._suggest_output())
         for variable in (self.input_path, self.output_path):
@@ -275,6 +285,7 @@ class MainWindow:
         job = TranslationJob(self.translator, options)
         self.job = job
         self.progress.configure(value=0)
+        self._clear_counters()
         self._update_buttons()
 
         def work() -> None:
@@ -303,8 +314,11 @@ class MainWindow:
 
         self.progress.configure(value=1.0)
         assert result.output_path is not None
-        self.status_text.set(f"Done in {result.elapsed:.0f} s: {result.paragraphs} paragraphs on "
-                             f"{result.slides} slides ({result.characters:,} characters).")
+        self.status_text.set(f"Done in {format_duration(result.elapsed)}.")
+        self.counters["slides"].set(f"{result.slides} slides")
+        self.counters["paragraphs"].set(f"{result.paragraphs:,} paragraphs")
+        self.counters["characters"].set(f"{result.characters:,} characters")
+        self.counters["time"].set(f"{format_duration(result.elapsed)} total")
         lines = [f"The translation was saved as:\n{result.output_path}"]
         if result.review_path:
             lines.append(f"Review spreadsheet:\n{result.review_path}")
@@ -323,10 +337,23 @@ class MainWindow:
         progress = self.job.progress
         self.progress.configure(value=progress.fraction)
         if progress.phase is Phase.TRANSLATING and progress.characters_total:
-            self.status_text.set(f"Translating… {progress.characters_done:,} of "
-                                 f"{progress.characters_total:,} characters ({progress.fraction:.0%})")
+            self.status_text.set(f"Translating… {progress.fraction:.0%}")
         else:
             self.status_text.set(f"{progress.phase.value}…")
+        self._render_counters(progress)
+
+    def _render_counters(self, progress: Progress) -> None:
+        if progress.paragraphs_total:
+            self.counters["slides"].set(f"Slide {progress.slide or 1} of {progress.slides_total}")
+            self.counters["paragraphs"].set(f"Paragraph {progress.paragraphs_done:,} of {progress.paragraphs_total:,}")
+            self.counters["characters"].set(f"{progress.characters_done:,} of {progress.characters_total:,} characters")
+        remaining = progress.remaining
+        left = f" · about {format_duration(remaining)} left" if remaining is not None else ""
+        self.counters["time"].set(f"{format_duration(progress.elapsed)} elapsed{left}")
+
+    def _clear_counters(self) -> None:
+        for variable in self.counters.values():
+            variable.set("")
 
     def _poll(self) -> None:
         while True:
@@ -344,6 +371,14 @@ class MainWindow:
                 return
             self.job.cancel()
         self.root.destroy()
+
+
+def format_duration(seconds: float) -> str:
+    """``75`` → ``1:15``, ``3725`` → ``1:02:05``."""
+    seconds = max(int(round(seconds)), 0)
+    hours, rest = divmod(seconds, 3600)
+    minutes, seconds = divmod(rest, 60)
+    return f"{hours}:{minutes:02d}:{seconds:02d}" if hours else f"{minutes}:{seconds:02d}"
 
 
 def _open_file(path: Path) -> None:

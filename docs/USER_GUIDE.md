@@ -78,8 +78,19 @@ never copies the key.
 
 ### Translating
 
-Click **Translate**. The progress bar shows how many characters have been
-translated. The window stays usable and you can click **Stop** at any time:
+Click **Translate**. The progress bar shows how much of the text has been
+translated, and the status bar at the bottom of the window counts:
+
+- **Slide N of M**: the slide being translated.
+- **Paragraph N of M**: paragraphs translated so far, out of all paragraphs found.
+- **Characters**: what has been sent to Google so far, out of the total. This is
+  what Google bills for.
+- **Elapsed** and **about … left**: the time left is estimated from the speed so far,
+  and appears once the first batch has come back.
+
+When the job ends the status bar keeps the totals.
+
+The window stays usable and you can click **Stop** at any time:
 Cicero finishes the request already on its way to Google, then stops without
 saving anything.
 

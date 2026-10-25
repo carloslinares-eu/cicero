@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Status bar with counters: slide, paragraphs and characters done out of the
+  total, elapsed time and an estimate of the time left. It keeps the totals when
+  the job ends. ([#16](https://github.com/carloslinares-eu/cicero/issues/16))
+- The progress bar ([#15](https://github.com/carloslinares-eu/cicero/issues/15))
+  arrived in 2.0.0; the status line next to it now shows the percentage.
+
 ## [2.0.0] - 2026-10-25
 
 A rewrite on current libraries. The `cicero` package keeps its name but every module is new.

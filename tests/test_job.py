@@ -94,3 +94,22 @@ def test_errors_are_reported_not_raised(fake_translator, tmp_path):
     assert "isn't a PowerPoint" in result.error
     assert not output.exists()
     assert list(tmp_path.glob("*.cicero-partial")) == []
+
+
+def test_progress_counts_paragraphs_slides_and_time(fake_translator, sample_deck, monkeypatch):
+    monkeypatch.setattr("cicero.core.job.batches", lambda segments: ([index] for index in range(len(segments))))
+    seen = []
+    job = TranslationJob(fake_translator, JobOptions(sample_deck, sample_deck.with_name("out.pptx"), "es"))
+    fake_translator.on_request = lambda number: seen.append(job.progress)
+    job.run()
+    assert [p.paragraphs_done for p in seen] == list(range(10))
+    assert all(p.paragraphs_total == 10 and p.slides_total == 3 for p in seen)
+    assert [p.slide for p in seen[1:]] == [1, 1, 1, 2, 2, 2, 2, 3, 3]  # slide of the paragraph just translated
+
+
+def test_remaining_time_follows_the_speed_so_far():
+    from cicero.core.job import Progress
+
+    progress = Progress(Phase.TRANSLATING, characters_done=250, characters_total=1000, translating_for=10)
+    assert progress.remaining == 30
+    assert Progress(Phase.SAVING, characters_done=1000, characters_total=1000, translating_for=10).remaining is None

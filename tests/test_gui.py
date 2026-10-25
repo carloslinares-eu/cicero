@@ -67,3 +67,15 @@ def test_language_box_resolves_typed_text(window):
         assert box.code == code
     box.set("Klingon")
     assert box.code is None and not box.is_valid
+
+
+def test_status_bar_counters(window):
+    from cicero.core.job import Phase, Progress
+    from cicero.gui.main_window import format_duration
+
+    window._render_counters(Progress(Phase.TRANSLATING, characters_done=1500, characters_total=6000,
+                                     paragraphs_done=40, paragraphs_total=160, slide=3, slides_total=12,
+                                     elapsed=75, translating_for=30))
+    assert [v.get() for v in window.counters.values()] == [
+        "Slide 3 of 12", "Paragraph 40 of 160", "1,500 of 6,000 characters", "1:15 elapsed · about 1:30 left"]
+    assert format_duration(3725) == "1:02:05"
