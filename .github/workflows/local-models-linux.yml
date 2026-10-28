@@ -32,7 +32,7 @@ jobs:
             image: fedora:latest
             setup: dnf install -y python3 python3-tkinter ca-certificates
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Python (as a user would)
         run: ${{ matrix.setup }}
       - name: Install Cicero
@@ -40,4 +40,9 @@ jobs:
           python3 -m venv /opt/venv
           /opt/venv/bin/pip install -r requirements.txt
       - name: Install the engine, download the model, translate, check
-        run: /opt/venv/bin/python scripts/check_local_model.py ${{ github.event.inputs.model || 'translategemma-4b' }} --managed
+        shell: bash
+        # The last lines of a failure are repeated as annotations, readable without signing in to GitHub.
+        run: |
+          set -o pipefail
+          /opt/venv/bin/python scripts/check_local_model.py ${{ github.event.inputs.model || 'translategemma-4b' }} \
+            --managed 2>&1 | tee check.log || { grep -v " INFO " check.log | tail -n 10 | sed "s/^/::error::/"; exit 1; }

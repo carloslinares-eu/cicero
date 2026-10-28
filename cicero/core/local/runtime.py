@@ -382,11 +382,35 @@ def _extract(archive: Path, target: Path) -> None:
             bundle.extractall(target)
     elif name.endswith((".tgz", ".tar.gz")):
         with tarfile.open(archive, "r:gz") as bundle:
-            bundle.extractall(target, filter="data")
+            _extract_tar(bundle, target)
     elif name.endswith(".tar.zst"):
         _extract_zst(archive, target)
     else:
         raise EngineError(f"Don't know how to unpack {name}.")
+
+
+def _extract_tar(bundle: tarfile.TarFile, target: Path) -> None:
+    """Unpack a tar archive, refusing anything that would land outside ``target``.
+
+    Python 3.12 and 3.11.4+ do this with ``filter="data"``. Debian 12 ships 3.11.2, which
+    has no filters, so the same checks are done here, one member at a time (which also
+    works on compressed streams).
+    """
+    if hasattr(tarfile, "data_filter"):
+        bundle.extractall(target, filter="data")
+        return
+    root = target.resolve()
+    for member in bundle:
+        destination = (target / member.name).resolve()
+        unsafe = not destination.is_relative_to(root) or member.isdev()
+        if member.issym():
+            unsafe = unsafe or not (destination.parent / member.linkname).resolve().is_relative_to(root)
+        elif member.islnk():
+            unsafe = unsafe or not (target / member.linkname).resolve().is_relative_to(root)
+        if unsafe:
+            raise EngineError(f"The engine download contains an unsafe path ({member.name}); it wasn't unpacked.")
+        member.mode &= 0o755  # no setuid/setgid bits, nothing writable by others
+        bundle.extract(member, target)
 
 
 def _extract_zst(archive: Path, target: Path) -> None:
@@ -396,7 +420,7 @@ def _extract_zst(archive: Path, target: Path) -> None:
         from compression import zstd  # Python 3.14+
 
         with zstd.open(archive, "rb") as stream, tarfile.open(fileobj=stream, mode="r|") as bundle:
-            bundle.extractall(target, filter="data")
+            _extract_tar(bundle, target)
         return
     except ImportError:
         pass
@@ -407,7 +431,7 @@ def _extract_zst(archive: Path, target: Path) -> None:
     if zstandard is not None:
         with open(archive, "rb") as raw, zstandard.ZstdDecompressor().stream_reader(raw) as stream, \
                 tarfile.open(fileobj=stream, mode="r|") as bundle:
-            bundle.extractall(target, filter="data")
+            _extract_tar(bundle, target)
         return
     tar = shutil.which("tar")
     if tar is None or subprocess.run([tar, "--zstd", "-xf", str(archive), "-C", str(target)],

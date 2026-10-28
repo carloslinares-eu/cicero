@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import sys
 import threading
 import zipfile
 from pathlib import Path
@@ -238,6 +239,43 @@ def test_linux_tar_zst_is_unpacked(tmp_path):
     archive.write_bytes(zstandard.ZstdCompressor().compress(raw.getvalue()))
     _extract(archive, tmp_path / "out")
     assert (tmp_path / "out" / "bin" / "ollama").read_bytes().startswith(b"#!/bin/sh")
+
+
+@pytest.mark.parametrize("with_filters", [True, False])
+@pytest.mark.filterwarnings("ignore:Python 3.14 will:DeprecationWarning")  # from simulating 3.11.2 on a newer one
+def test_tar_archives_unpack_safely_with_and_without_filters(tmp_path, monkeypatch, with_filters):
+    import tarfile
+
+    from cicero.core.local.runtime import _extract_tar
+
+    if not with_filters:  # as on Debian 12's Python 3.11.2
+        monkeypatch.delattr(tarfile, "data_filter", raising=False)
+
+    def archive(members) -> io.BytesIO:
+        raw = io.BytesIO()
+        with tarfile.open(fileobj=raw, mode="w") as bundle:
+            for name, link in members:
+                info = tarfile.TarInfo(name)
+                if link is None:
+                    info.size, info.mode = 4, 0o4755
+                    bundle.addfile(info, io.BytesIO(b"data"))
+                else:
+                    info.type, info.linkname = tarfile.SYMTYPE, link
+                    bundle.addfile(info)
+        raw.seek(0)
+        return raw
+
+    members = [("bin/ollama", None), ("lib/ollama/libcudart.so.12.8", None)]
+    if sys.platform != "win32":  # creating symlinks needs special rights on Windows; Linux archives have them
+        members.append(("lib/ollama/libcudart.so.12", "libcudart.so.12.8"))
+    good = archive(members)
+    with tarfile.open(fileobj=good, mode="r|") as bundle:
+        _extract_tar(bundle, tmp_path / "ok")
+    assert (tmp_path / "ok" / "bin" / "ollama").read_bytes() == b"data"
+    for bad in ([("../escape", None)], [("lib/link", "../../outside")]):
+        with tarfile.open(fileobj=archive(bad), mode="r|") as bundle, pytest.raises(Exception):
+            _extract_tar(bundle, tmp_path / "bad")
+    assert not (tmp_path / "escape").exists()
 
 
 def test_amd_memory_is_read_from_sysfs(tmp_path):

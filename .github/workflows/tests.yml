@@ -16,8 +16,8 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install Tk and a virtual display
@@ -46,7 +46,7 @@ jobs:
             image: fedora:latest
             setup: dnf install -y python3 python3-tkinter xorg-x11-server-Xvfb xauth which
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Python, Tk and a virtual display (as a user would)
         run: ${{ matrix.setup }}
       - name: Install Cicero
@@ -54,4 +54,9 @@ jobs:
           python3 -m venv /opt/venv
           /opt/venv/bin/pip install -r requirements-dev.txt
       - name: Tests (virtual display)
-        run: xvfb-run -a /opt/venv/bin/python -m pytest -q
+        shell: bash
+        # Failures are repeated as annotations, which can be read without signing in to GitHub.
+        run: |
+          set -o pipefail
+          xvfb-run -a /opt/venv/bin/python -m pytest -q -rfE 2>&1 | tee pytest.log || {
+            grep -E "^(FAILED|ERROR)|Error:" pytest.log | head -n 10 | sed "s/^/::error::/"; exit 1; }
