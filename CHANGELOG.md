@@ -25,6 +25,13 @@ All notable changes to this project are documented here. The format follows
 - Source-language detection for local models that need it (langdetect).
 - `docs/LOCAL_MODELS.md`: the architectures considered, the design, and results.
 
+### Fixed
+
+- The standalone executable (`Cicero.exe`, including 2.1.0's) couldn't translate PDFs: PyMuPDF 2 loads
+  its optional layout analyzer whenever it is installed, and the executable bundled it without its data
+  files. Cicero doesn't use it, so the build now leaves it (and the ONNX runtime) out, which also makes
+  the executable 14 MB smaller. Running Cicero from Python wasn't affected.
+
 ## [2.1.0] - 2026-10-25
 
 Word documents, PDFs and DeepL join PowerPoint and Google Cloud Translation, along with SmartArt,
