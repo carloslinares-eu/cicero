@@ -126,6 +126,28 @@ class Context:
 
     earlier: list[tuple[str, str]] = field(default_factory=list)  # (original, translation) on the same page
     brief: Brief | None = None
+    where: str = ""  # e.g. "the speaker notes of slide 3", for models that can use it
+
+
+def describe_place(location: str, page: int, unit: str | None = "slide") -> str:
+    """Where a paragraph sits, in words a model can use: notes are written to the presenter, titles are short."""
+    lowered = location.lower()
+    on = f" of {unit} {page}" if unit and page else ""
+    if lowered == "notes":
+        return f"the speaker notes{on} (written for the presenter, not shown to the audience)"
+    if lowered.startswith(("master", "layout")):  # before "title": a layout has title placeholders too
+        return "the slide master or a layout (shared by many slides)"
+    if "subtitle" in lowered:
+        return f"the subtitle{on}"
+    if "title" in lowered:
+        return f"the title{on}"
+    if lowered.startswith("table") or "› table" in lowered:
+        return f"a table cell{on}"
+    if lowered.startswith(("header", "footer")):
+        return f"the page {lowered.split()[0]}"
+    if lowered.startswith(("footnotes", "endnotes", "comments")):
+        return f"the {lowered.split()[0]}"
+    return f"the body text{on}"
 
 
 BRIEF_SCHEMA = {
@@ -251,6 +273,8 @@ def _general(marked: Marked, target: str, source: str | None, context: Context |
     system = "\n".join(f"- {rule}" if index else rule for index, rule in enumerate(rules))
     if context and context.brief and context.brief.summary:
         system += f"\n\nAbout the document: {context.brief.summary}"
+    if context and context.where:
+        system += f"\n\nThe text to translate is from {context.where}; translate it in a way that fits there."
     glossary = context.brief.terms_in(marked.text) if context and context.brief else {}
     if glossary:
         system += "\n\nUse these translations for consistency:\n" + "\n".join(

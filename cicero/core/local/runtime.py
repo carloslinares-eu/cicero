@@ -43,6 +43,7 @@ RELEASES_URL = "https://github.com/ollama/ollama/releases/download"
 DEFAULT_URL = "http://127.0.0.1:11434"
 START_TIMEOUT = 60  # seconds for `ollama serve` to answer
 CHUNK = 1024 * 1024
+TAR_FILTERS = hasattr(tarfile, "data_filter")  # Python 3.12+, 3.11.4+; not Debian 12's 3.11.2
 
 
 class EngineError(CiceroError):
@@ -396,7 +397,7 @@ def _extract_tar(bundle: tarfile.TarFile, target: Path) -> None:
     has no filters, so the same checks are done here, one member at a time (which also
     works on compressed streams).
     """
-    if hasattr(tarfile, "data_filter"):
+    if TAR_FILTERS:
         bundle.extractall(target, filter="data")
         return
     root = target.resolve()

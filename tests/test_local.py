@@ -121,6 +121,23 @@ def test_general_models_get_the_brief_glossary_and_earlier_text():
     assert user == {"role": "user", "content": "<s1>Apple</s1><s2>sales</s2>"}
 
 
+@pytest.mark.parametrize("location, page, unit, expected", [
+    ("Notes", 3, "slide", "the speaker notes of slide 3 (written for the presenter, not shown to the audience)"),
+    ("Title 1", 2, "slide", "the title of slide 2"),
+    ("Subtitle 2", 1, "slide", "the subtitle of slide 1"),
+    ("Table: Table 3", 4, "slide", "a table cell of slide 4"),
+    ("Body › Table", 0, None, "a table cell"),
+    ("Header", 0, None, "the page header"),
+    ("Layout: Title Slide › Title 1", 0, "slide", "the slide master or a layout (shared by many slides)"),
+    ("Content Placeholder 2", 5, "slide", "the body text of slide 5"),
+    ("Text", 7, "page", "the body text of page 7"),
+])
+def test_places_are_described_for_the_model(location, page, unit, expected):
+    from cicero.core.local.prompts import describe_place
+
+    assert describe_place(location, page, unit) == expected
+
+
 # -- Ollama client -------------------------------------------------------------------------
 
 def test_pull_reports_progress_over_all_files(ollama):
@@ -248,8 +265,7 @@ def test_tar_archives_unpack_safely_with_and_without_filters(tmp_path, monkeypat
 
     from cicero.core.local.runtime import _extract_tar
 
-    if not with_filters:  # as on Debian 12's Python 3.11.2
-        monkeypatch.delattr(tarfile, "data_filter", raising=False)
+    monkeypatch.setattr("cicero.core.local.runtime.TAR_FILTERS", with_filters)  # False: as on Debian 12's 3.11.2
 
     def archive(members) -> io.BytesIO:
         raw = io.BytesIO()
@@ -354,6 +370,8 @@ def test_general_model_reads_the_document_first(ollama, sample_deck):
     apple = next(chat for chat in ollama.chats[1:] if chat["messages"][-1]["content"] == "Apple")
     assert "Apple → Manzana" in apple["messages"][0]["content"]
     assert all(chat.get("think") is False for chat in ollama.chats)
+    notes = next(chat for chat in ollama.chats if chat["messages"][-1]["content"] == "Speak slowly")
+    assert "is from the speaker notes of slide 1" in notes["messages"][0]["content"]
     # The second paragraph of slide 1 is sent with the first one and its translation as context.
     subtitle = next(chat for chat in ollama.chats if chat["messages"][-1]["content"] == "R&D <draft>")
     assert "Quarterly results → QUARTERLY RESULTS" in subtitle["messages"][0]["content"]

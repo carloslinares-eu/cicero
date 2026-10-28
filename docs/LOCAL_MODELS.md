@@ -50,7 +50,7 @@ EU. They are listed in `cicero/core/local/catalog.py`; adding one is one entry.
 |---|---|---|---|---|---|
 | TranslateGemma 4B (Google) | `translategemma:4b` | 3.3 GB | 8 GB | Gemma Terms of Use | `TRANSLATEGEMMA` |
 | Hy-MT2 7B (Tencent) | `hf.co/tencent/Hy-MT2-7B-GGUF:Q4_K_M` | 4.6 GB | 8 GB | Apache 2.0 | `HY_MT` |
-| Qwen 3.5 9B (Alibaba) | `qwen3.5:9b` | 6.6 GB | 8 GB tight, 12 GB+ comfortable | Apache 2.0 | `GENERAL` |
+| Qwen 3.5 9B (Alibaba) | `qwen3.5:9b` | 6.6 GB (5.6 GB in memory) | 8 GB | Apache 2.0 | `GENERAL` |
 | TranslateGemma 12B (Google) | `translategemma:12b` | 8.1 GB | 16 GB | Gemma Terms of Use | `TRANSLATEGEMMA` |
 
 Left out:
@@ -107,6 +107,7 @@ Each model gets the context it was trained to use:
 | Reads the whole document first | No | No | Yes: a brief and a glossary |
 | Glossary | No | Tencent's terminology prompt | In the system prompt |
 | Earlier paragraphs on the same page | No (2K-token prompt, single message) | Tencent's background-information prompt | Originals and their translations |
+| Where the paragraph is | No | No | "the title of slide 2", "a table cell", "the speaker notes (written for the presenter)" |
 | Sampling | Greedy, as in the model card | Tencent's recommended settings | Low temperature, thinking off |
 
 **The brief.** Before translating, a general model reads up to 16 000 characters
@@ -143,14 +144,30 @@ language and is reported at the end.
 A three-slide business review (16 paragraphs, bold text in the middle of a
 sentence, a table and speaker notes), English to Spanish:
 
-| Model | First load | Translation | On the GPU |
+| Model | First load | 16 paragraphs | In GPU memory |
 |---|---|---|---|
-| TranslateGemma 4B | 41 s (engine start and model load, once) | 30 s | 2.9 GB, all of it |
+| TranslateGemma 4B | 41 s (engine start and model load, the first time) | 30 s | 2.9 GB, all of it |
+| Hy-MT2 7B | 20 s | 18 s | 5.3 GB, all of it |
+| Qwen 3.5 9B | 11 s | 18–24 s, including reading the document | 5.6 GB, all of it |
 
-The bold phrase stayed bold and moved to its place in the Spanish sentence. Without
-context, TranslateGemma translated the company name ("Northwind Analytics" became
-"Análisis de Northwind") and put a speaker note to the presenter in the first person,
-the cases the brief and the neighbouring text are for.
+All three kept the bold phrase bold and moved it to its place in the Spanish sentence.
+The differences are the ones the context strategy is about:
+
+- **TranslateGemma** (no context) translated the company name: "Northwind Analytics:
+  Q3 Business Review" became "Análisis de Northwind: Resumen del tercer trimestre".
+- **Hy-MT2** (earlier paragraphs as background) kept the name, and wrote *Fráncfort* and *T3*.
+- **Qwen 3.5** first wrote an accurate summary and an eight-term glossary (keep
+  *Northwind Analytics* and *Insight Cloud*, *Frankfurt* → *Fráncfort*, *customer churn*
+  → *tasa de abandono de clientes*), then followed it in every paragraph; the table
+  header "Mitigation" matched the slide title's *medidas de mitigación*.
+
+All three put the speaker note "Thank everyone for coming and mention that…" in the first
+person, as if it were the presenter's script; telling Qwen the text is a speaker note
+didn't change that. It is a defensible reading, so it was left alone.
+
+The same check on GitHub Actions' Debian 12 and Fedora containers (no graphics card):
+Cicero downloads its own Ollama, TranslateGemma 4B, and translates the presentation on
+the processor.
 
 ## Testing
 

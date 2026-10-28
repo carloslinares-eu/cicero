@@ -169,8 +169,12 @@ class TranslationJob:
             self._set_progress(Phase.PREPARING, characters_total=total, paragraphs_total=len(blocks),
                                pages_total=result.pages, unit=result.unit)
             first = [blocks[owners[segment][0]] for segment in segments]
-            prepare([SegmentInfo(segment, block.page, block.location) for segment, block in zip(segments, first)],
-                    options.target_language, options.source_language, cancel=self._cancel)
+            infos = [SegmentInfo(segment, block.page, block.location) for segment, block in zip(segments, first)]
+            try:
+                prepare(infos, options.target_language, options.source_language, cancel=self._cancel,
+                        unit=document.unit)
+            except TypeError:  # a translator whose prepare() predates the unit argument
+                prepare(infos, options.target_language, options.source_language, cancel=self._cancel)
             self._check_cancelled()
         done = paragraphs_done = 0
         self._set_progress(Phase.TRANSLATING, characters_total=total, paragraphs_total=len(blocks),

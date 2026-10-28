@@ -31,6 +31,7 @@ from cicero.core.local.prompts import (
     Context,
     brief_messages,
     clean_answer,
+    describe_place,
     from_markers,
     parse_brief,
     to_markers,
@@ -62,6 +63,7 @@ class LocalTranslator:
         self._positions: dict[str, int] = {}
         self._done: dict[int, tuple[str, str]] = {}  # position → (original, translation), as plain text
         self._untranslated = 0
+        self.unit: str | None = "slide"  # what pages are called in this document, for describe_place
 
     @property
     def description(self) -> str:
@@ -74,7 +76,9 @@ class LocalTranslator:
     # -- before translating ---------------------------------------------------------
 
     def prepare(self, segments: Sequence[SegmentInfo], target: str, source: str | None,
-                on_status: Callable[[str], None] | None = None, cancel: threading.Event | None = None) -> None:
+                on_status: Callable[[str], None] | None = None, cancel: threading.Event | None = None,
+                unit: str | None = "slide") -> None:
+        self.unit = unit
         self._infos = list(segments)
         self._positions = {info.html: position for position, info in enumerate(self._infos)}
         self._done.clear()
@@ -149,7 +153,8 @@ class LocalTranslator:
     def _context(self, position: int | None) -> Context | None:
         if position is None:
             return Context(brief=self.brief) if self.brief else None
-        page = self._infos[position].page
+        info = self._infos[position]
+        page = info.page
         earlier = []
         for previous in range(position - 1, -1, -1):
             if self._infos[previous].page != page or len(earlier) == EARLIER_PARAGRAPHS:
@@ -157,7 +162,8 @@ class LocalTranslator:
             if previous in self._done:
                 original, translation = self._done[previous]
                 earlier.append((original[:EARLIER_CHARACTERS], translation[:EARLIER_CHARACTERS]))
-        return Context(list(reversed(earlier)), self.brief)
+        where = describe_place(info.location, page, self.unit) if self.model.reads_whole_document else ""
+        return Context(list(reversed(earlier)), self.brief, where)
 
     def _update_warning(self) -> None:
         message = (f"{self._untranslated} paragraph(s) came back empty from {self.model.name} and were left in the "

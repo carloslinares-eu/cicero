@@ -40,7 +40,8 @@ changed.
 - **Local models without the hassle.** Pick a model, click **Download**, wait for the
   green ✔ **Ready**. Cicero downloads and runs the model engine (Ollama) by itself,
   hidden, and stops it when you close Cicero. Models for 8 GB and 16 GB graphics
-  cards: TranslateGemma 4B and 12B, Hy-MT2 7B and Qwen 3.5 9B.
+  cards: TranslateGemma 4B and 12B, Hy-MT2 7B and Qwen 3.5 9B. Tested on an 8 GB
+  RTX 3070 Ti: a 16-paragraph presentation takes 18–30 s.
 - **Context-aware local translation.** Models trained for it get the surrounding
   text of each slide or page; a general model first reads the whole document and
   writes a glossary, so names and terms stay consistent.

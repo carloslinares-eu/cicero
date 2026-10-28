@@ -71,7 +71,7 @@ ideally on its graphics card. Cicero offers four:
 |---|---|---|---|
 | **TranslateGemma 4B** (Google) | 3.3 GB | 8 GB | Fast, 55 languages; the default |
 | **Hy-MT2 7B** (Tencent) | 4.6 GB | 8 GB | Uses the surrounding text on each slide or page; 38 languages (many Asian ones, fewer European ones) |
-| **Qwen 3.5 9B** (Alibaba) | 6.6 GB | 12 GB or more (runs on 8 GB, more slowly) | Reads the whole document first and keeps names and terms consistent; 200+ languages |
+| **Qwen 3.5 9B** (Alibaba) | 6.6 GB | 8 GB | Reads the whole document first and keeps names and terms consistent; 200+ languages |
 | **TranslateGemma 12B** (Google) | 8.1 GB | 16 GB | The best quality of the four |
 
 The note under the model says whether it fits your graphics card. A model that
@@ -115,8 +115,8 @@ context it was trained to use:
 - **Qwen 3.5** first reads the whole document (step *Reading the whole document*)
   and writes a short summary and a glossary of names, products and technical
   terms. Every paragraph is then translated with the summary, the glossary terms it
-  contains, and the earlier paragraphs on the same slide or page with their
-  translations.
+  contains, the earlier paragraphs on the same slide or page with their
+  translations, and where it sits (a title, a table cell, the speaker notes…).
 - **Hy-MT2** gets the earlier paragraphs on the same slide or page as background,
   in the format Tencent trained it with.
 - **TranslateGemma** translates each paragraph on its own, with the exact prompt
