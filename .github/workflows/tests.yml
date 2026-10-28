@@ -1,0 +1,57 @@
+# The test suite on Windows and on the Linux distributions Cicero supports.
+# Window (Tk) tests run on a virtual display (Xvfb) on Linux.
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  native:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Tk and a virtual display
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb
+      - run: pip install -r requirements-dev.txt
+      - name: Tests
+        if: runner.os == 'Windows'
+        run: python -m pytest -q
+      - name: Tests (virtual display)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python -m pytest -q
+
+  distributions:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Debian 12
+            image: debian:12
+            setup: apt-get update && apt-get install -y python3 python3-venv python3-tk xvfb xauth
+          - name: Fedora
+            image: fedora:latest
+            setup: dnf install -y python3 python3-tkinter xorg-x11-server-Xvfb xauth which
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python, Tk and a virtual display (as a user would)
+        run: ${{ matrix.setup }}
+      - name: Install Cicero
+        run: |
+          python3 -m venv /opt/venv
+          /opt/venv/bin/pip install -r requirements-dev.txt
+      - name: Tests (virtual display)
+        run: xvfb-run -a /opt/venv/bin/python -m pytest -q

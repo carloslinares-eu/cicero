@@ -5,7 +5,7 @@
 <h1 align="center">Cicero</h1>
 
 <p align="center">
-  Translates PowerPoint presentations, Word documents and PDFs with Google Cloud Translation or DeepL, keeping their layout and formatting.
+  Translates PowerPoint presentations, Word documents and PDFs with Google Cloud Translation, DeepL or an open model running on your own computer, keeping their layout and formatting.
 </p>
 
 <p align="center">
@@ -15,8 +15,8 @@
 Pick a `.pptx` presentation, a `.docx` Word document or a `.pdf` and a language. Cicero
 finds the text on every slide or page (titles, text boxes, shapes inside groups,
 tables, SmartArt, speaker notes; in Word also headers, footers and footnotes),
-sends it to Google Cloud Translation or DeepL and writes a translated copy next
-to the original. Fonts,
+sends it to Google Cloud Translation, DeepL or a model on your own computer, and
+writes a translated copy next to the original. Fonts,
 colours, bold words and links stay where they were. The original file is never
 changed.
 
@@ -34,8 +34,16 @@ changed.
   and colour; pictures, drawings and backgrounds stay untouched.
 - **Repeated text is translated once.** A footer on every slide is sent to Google
   (and billed) only once.
-- **Two translation services.** Google Cloud Translation (about 190 languages) or
-  DeepL (Free or Pro), both with automatic detection of the source language.
+- **Three ways to translate.** Google Cloud Translation (about 190 languages),
+  DeepL (Free or Pro), or an open translation model running on your own graphics
+  card: nothing leaves your computer and there is nothing to pay per character.
+- **Local models without the hassle.** Pick a model, click **Download**, wait for the
+  green ✔ **Ready**. Cicero downloads and runs the model engine (Ollama) by itself,
+  hidden, and stops it when you close Cicero. Models for 8 GB and 16 GB graphics
+  cards: TranslateGemma 4B and 12B, Hy-MT2 7B and Qwen 3.5 9B.
+- **Context-aware local translation.** Models trained for it get the surrounding
+  text of each slide or page; a general model first reads the whole document and
+  writes a glossary, so names and terms stay consistent.
   Type in the language box to filter the list.
 - **Only pays for words.** Numbers, symbols and empty text aren't sent.
 - **Review spreadsheet.** Optionally save a `.csv` with each original paragraph
@@ -50,13 +58,18 @@ changed.
 - Python **3.10 or newer** with Tkinter.
   - Windows and macOS: the installers from [python.org](https://www.python.org/downloads/) include Tkinter.
   - Linux: install it from your package manager, e.g. `sudo apt install python3-tk` (Debian/Ubuntu)
-    or `sudo dnf install python3-tkinter` (Fedora).
+    or `sudo dnf install python3-tkinter` (Fedora). Everything, local models included, is tested
+    on Debian and Fedora.
 - An account with one of the translation services:
   - **Google Cloud Translation**: a Google Cloud project with the Cloud Translation
     API enabled and a service account key. The [user guide](docs/USER_GUIDE.md#setting-up-google-cloud)
     walks through it; it takes about five minutes.
   - **DeepL**: a [DeepL API](https://www.deepl.com/pro-api) account (the Free plan
     works) and its authentication key. See [Setting up DeepL](docs/USER_GUIDE.md#setting-up-deepl).
+  - **A local model**: no account at all. A graphics card with 8 GB or more is
+    recommended (NVIDIA, AMD or Apple Silicon); without one, models run on the
+    processor, slowly. The first download is the model (3–8 GB) plus, once, the
+    1.6 GB engine. See [Local models](docs/USER_GUIDE.md#local-models).
 
 Both services charge by the character, with a monthly free allowance. See
 [Cloud Translation pricing](https://cloud.google.com/translate/pricing) and
@@ -109,7 +122,9 @@ The last two also work straight from a checkout after `pip install -r requiremen
 
 1. Choose the **Service**. For Google Cloud Translation, click **Browse…** next to
    **Key file** and choose your service account key (a `.json` file); for DeepL,
-   paste your **Auth key** and click **Connect**. Cicero shows what it connected to.
+   paste your **Auth key** and click **Connect**. For a **Local model**, choose a
+   model and click **Download**; when the green ✔ **Ready** appears Cicero connects
+   by itself. Cicero shows what it connected to.
 2. Click **Browse…** next to **Translate** and choose a `.pptx`, `.docx` or `.pdf` file.
 3. Choose the language in **Into**. Leave **From** on *Detect automatically* or pick it.
 4. Check the **Save as** path (it defaults to `<name> (<language>).pptx` next to the original).
@@ -124,7 +139,7 @@ what is and isn't translated, and troubleshooting.
 |------|--------------|
 | 1. Reading | The file is searched for paragraphs with letters in them: on slides, shapes (including inside groups), table cells, SmartArt and notes; in Word, the body, tables, text boxes, headers, footers and notes; in a PDF, each block of text. |
 | 2. Packing | Each paragraph's runs are wrapped in numbered `<span>` tags, so the translator sees one sentence but knows which words belonged to which run. |
-| 3. Translating | Each distinct paragraph is sent once, in batches (Google Cloud Translation v3: up to 100 paragraphs; DeepL: up to 50), with HTML tag handling so the run markers survive. |
+| 3. Translating | Each distinct paragraph is sent once, in batches (Google Cloud Translation v3: up to 100 paragraphs; DeepL: up to 50), with HTML tag handling so the run markers survive. Local models get one paragraph at a time, with the context they were trained to use. |
 | 4. Saving | Each translation is split back into its runs, keeping their formatting (in a PDF, the original text is removed and the translation laid out in its place), and the copy is saved through a temporary file. |
 
 More detail is in [ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -149,7 +164,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-The tests use fake translators and never contact Google or DeepL.
+The tests use fake translators and a fake Ollama server; they never contact Google or DeepL, download models or need a graphics card.
 
 The icon is drawn by `scripts/generate_icon.py`; run it again after changing the design. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the project layout and conventions.
@@ -171,6 +186,14 @@ cicero-translator/
 │   │   ├── translator.py    Google Cloud Translation v3 client, batching, error messages
 │   │   ├── deepl_engine.py  DeepL client
 │   │   ├── secrets.py       the DeepL key in the system credential store
+│   │   ├── local/           open models on this computer, through a private Ollama
+│   │   │   ├── catalog.py   the models offered, their prompt style and languages
+│   │   │   ├── runtime.py   downloading and running Ollama, hidden
+│   │   │   ├── ollama.py    Ollama's HTTP API: models, downloads, chat
+│   │   │   ├── prompts.py   each model's prompt, run tags, cleaning answers
+│   │   │   ├── translator.py  LocalTranslator and the context strategy
+│   │   │   ├── languages.py the languages each model knows
+│   │   │   └── hardware.py  graphics memory, to say which models fit
 │   │   ├── credentials.py   service account keys and Application Default Credentials
 │   │   ├── review.py        the optional .csv review spreadsheet
 │   │   ├── settings.py      remembered choices

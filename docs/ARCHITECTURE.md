@@ -18,6 +18,14 @@ cicero/
 │   ├── translator.py    Translator protocol, GoogleTranslator (v3), batches(), describe_error()
 │   ├── deepl_engine.py  DeepLTranslator: the same protocol on the DeepL API
 │   ├── secrets.py       DeepL key in the OS credential store (keyring)
+│   ├── local/           open models on this computer (see LOCAL_MODELS.md)
+│   │   ├── catalog.py     LocalModel, PromptStyle, CATALOG
+│   │   ├── runtime.py     OllamaRuntime: find/install/start Ollama; model_on_disk()
+│   │   ├── ollama.py      OllamaClient: tags, pull (with progress), delete, chat, load
+│   │   ├── prompts.py     run tags, per-style prompts, the brief, cleaning answers
+│   │   ├── translator.py  LocalTranslator: prepare() + translate(), the context strategy
+│   │   ├── languages.py   language tables per model; mapping detected codes
+│   │   └── hardware.py    detect_gpu() via nvidia-smi, fit_note()
 │   ├── credentials.py   load_key_file(), load_default() → CloudAccount
 │   ├── review.py        write_review(): the .csv review spreadsheet
 │   ├── settings.py      Settings: remembered paths and languages (JSON in the user config folder)
@@ -201,6 +209,33 @@ The key is a secret string rather than a file, so it isn't stored in
 `keyring` and treats any failure there as "not remembered". The settings file
 stores the chosen engine and, per engine, the last languages, because the two
 services use different codes.
+
+## Local models
+
+`LocalTranslator` implements the same protocol on a model run by Ollama, which
+Cicero downloads and starts by itself. The design, the alternatives that were
+considered and measured results are in [LOCAL_MODELS.md](LOCAL_MODELS.md). What the
+rest of the code relies on:
+
+- **`prepare()`**: an optional translator method the job calls before translating,
+  in a *Reading the whole document* phase, with every distinct paragraph in reading
+  order and the slide or page it first appears on (`SegmentInfo`). Local models use
+  it to detect the source language and, for general models, to write the brief and
+  glossary. Google and DeepL don't have it.
+- **`max_segments = 1`**: one paragraph per request, so progress and Stop work
+  per paragraph.
+- **`warnings`**: paragraphs a model returned empty are reported at the end of the job.
+- **Platforms**: Windows (x64, ARM), Linux (x86-64, ARM; tested on Debian and
+  Fedora in CI) and macOS. Ollama's Linux download is a `.tar.zst`, unpacked with
+  Python 3.14's `compression.zstd`, the `zstandard` package (a Linux-only
+  dependency) or the system's `tar`. The server is tied to Cicero's lifetime with a
+  job object on Windows and `PR_SET_PDEATHSIG` on Linux. When an AMD card is found
+  (`/sys/class/drm/*/device/vendor` on Linux) the ROCm add-on is unpacked over the
+  main download.
+- **The window** owns one `OllamaRuntime`. Downloads run on a background thread that
+  reports `DownloadProgress` (the engine) and `PullProgress` (the model) through an
+  attribute the 100 ms poll renders; a `threading.Event` cancels them. Closing the
+  window stops the server Cicero started.
 
 ## Saving
 

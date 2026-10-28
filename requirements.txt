@@ -4,6 +4,10 @@ python-docx==1.2.0              # reading and writing .docx files
 pymupdf==2.0                    # reading and rewriting PDF files (AGPL-3.0, compatible with Cicero's GPL-3.0)
 deepl==1.32.0                   # DeepL API client, the alternative translation service
 keyring==25.7.0                 # keeping the DeepL key in the system credential store
+langdetect==1.0.9               # telling the document's language to local models that need it
+zstandard==0.25.0; sys_platform == "linux"  # unpacking Ollama's Linux download (.tar.zst)
+
+# Local models run in Ollama, which Cicero downloads by itself the first time (see docs/LOCAL_MODELS.md).
 
 # Cicero also needs Tkinter, which ships with the python.org installers for
 # Windows and macOS. On Linux install it separately, e.g.

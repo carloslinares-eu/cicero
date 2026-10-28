@@ -34,6 +34,23 @@ The tests don't need a Google account.
   and run it to regenerate `cicero/assets/` (the `.ico`, and the 256, 64 and 48 px
   PNGs); don't edit the image files by hand.
 
+## Adding a local model
+
+Add a `LocalModel` to `CATALOG` in `cicero/core/local/catalog.py`: its Ollama name
+(from the Ollama library, or `hf.co/<user>/<repo>:<quantisation>` for a GGUF on
+Hugging Face), download size, the graphics memory it needs, its prompt style, its
+languages (`languages.py`) and its licence. Check the licence allows use where
+Cicero's users are, use the prompt from the model card (`prompts.py`), and check it
+end to end before committing:
+
+```bash
+python scripts/check_local_model.py <model-key>
+```
+
+The script installs the engine and the model if needed, translates a generated
+presentation and checks the result. GitHub Actions runs it on Debian and Fedora when
+`cicero/core/local/` changes.
+
 ## Updating dependencies
 
 `requirements.txt` pins the versions the release was tested with;

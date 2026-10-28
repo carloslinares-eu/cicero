@@ -36,6 +36,15 @@ class Language:
         return f"{self.name} ({self.code})"
 
 
+@dataclass(frozen=True, slots=True)
+class SegmentInfo:
+    """A paragraph to translate and where it first appears, for translators that use the context."""
+
+    html: str  # as sent to translate()
+    page: int  # slide or page number (0 for masters, and for Word documents)
+    location: str  # e.g. "Title 1", "Notes", "Body › Table"
+
+
 class Translator(Protocol):
     """What the rest of Cicero needs from a translation service. Tests use a fake one."""
 

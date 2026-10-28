@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Local models**: translate with an open model on your own computer, as a third
+  service next to Google Cloud Translation and DeepL. Choose a model, click
+  **Download**, and Cicero fetches and runs everything by itself: it downloads the
+  Ollama engine once (checked against its published checksum), runs it hidden on a
+  private port, and stops it when Cicero closes. A green ✔ Ready shows which models
+  are downloaded; **Remove…** frees the space again. An Ollama you already run is
+  used as is, and models are shared with it.
+- Four models for 8 and 16 GB graphics cards: TranslateGemma 4B and 12B (Google),
+  Hy-MT2 7B (Tencent) and Qwen 3.5 9B (Alibaba). The window says whether each one
+  fits your graphics card.
+- Context-aware translation with local models: each model gets the prompt it was
+  trained on; Hy-MT2 also gets the earlier paragraphs of the slide or page, and Qwen
+  3.5 first reads the whole document and writes a summary and a glossary that every
+  paragraph is translated with.
+- Source-language detection for local models that need it (langdetect).
+- `docs/LOCAL_MODELS.md`: the architectures considered, the design, and results.
+
 ## [2.1.0] - 2026-10-25
 
 Word documents, PDFs and DeepL join PowerPoint and Google Cloud Translation, along with SmartArt,

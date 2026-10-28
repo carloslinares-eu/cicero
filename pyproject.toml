@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 license = "GPL-3.0-only"
 license-files = ["LICENSE"]
 authors = [{ name = "Carlos Linares" }]
-keywords = ["powerpoint", "pptx", "word", "docx", "pdf", "translation", "google cloud translation", "deepl", "tkinter"]
+keywords = ["powerpoint", "pptx", "word", "docx", "pdf", "translation", "google cloud translation", "deepl", "ollama", "local llm", "tkinter"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: Win32 (MS Windows)",
@@ -31,6 +31,8 @@ dependencies = [
     "pymupdf>=1.26,<3",
     "deepl>=1.20,<2",
     "keyring>=25",
+    "langdetect>=1.0.9",
+    "zstandard>=0.22; sys_platform == 'linux'",  # Ollama's Linux download is a .tar.zst
 ]
 
 [project.optional-dependencies]
