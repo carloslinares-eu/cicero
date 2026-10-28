@@ -150,6 +150,10 @@ sentence, a table and speaker notes), English to Spanish:
 | Hy-MT2 7B | 20 s | 18 s | 5.3 GB, all of it |
 | Qwen 3.5 9B | 11 s | 18–24 s, including reading the document | 5.6 GB, all of it |
 
+In the window itself, with Hy-MT2 already downloaded: Cicero showed the green mark on
+opening, started its engine and loaded the model by itself in 8 s, translated the
+presentation in 4 s, and stopped the engine when the window closed.
+
 All three kept the bold phrase bold and moved it to its place in the Spanish sentence.
 The differences are the ones the context strategy is about:
 

@@ -265,6 +265,8 @@ def test_tar_archives_unpack_safely_with_and_without_filters(tmp_path, monkeypat
 
     from cicero.core.local.runtime import _extract_tar
 
+    if with_filters and not hasattr(tarfile, "data_filter"):
+        pytest.skip("this Python has no extraction filters (e.g. Debian 12's 3.11.2): only the fallback applies")
     monkeypatch.setattr("cicero.core.local.runtime.TAR_FILTERS", with_filters)  # False: as on Debian 12's 3.11.2
 
     def archive(members) -> io.BytesIO:
