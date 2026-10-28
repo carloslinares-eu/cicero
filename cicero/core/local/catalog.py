@@ -31,7 +31,7 @@ class LocalModel:
     gpu_gb: int  # graphics memory it runs well in (it still runs with less, more slowly)
     style: PromptStyle
     language_codes: list[str]
-    licence: str
+    license: str
     summary: str
     homepage: str
     options: dict = field(default_factory=dict)  # Ollama sampling options, as the model card recommends
@@ -60,7 +60,7 @@ CATALOG: list[LocalModel] = [
         gpu_gb=8,
         style=PromptStyle.TRANSLATEGEMMA,
         language_codes=languages.TRANSLATEGEMMA,
-        licence="Gemma Terms of Use",
+        license="Gemma Terms of Use",
         summary="Fast, made only for translation. 55 languages.",
         homepage="https://ollama.com/library/translategemma",
         options={"temperature": 0},  # the model card decodes greedily
@@ -75,7 +75,7 @@ CATALOG: list[LocalModel] = [
         gpu_gb=8,
         style=PromptStyle.HY_MT,
         language_codes=languages.HY_MT2,
-        licence="Apache 2.0",
+        license="Apache 2.0",
         summary="Made for translation; uses the surrounding text as context. 38 languages.",
         homepage="https://huggingface.co/tencent/Hy-MT2-7B",
         options={"temperature": 0.7, "top_p": 0.6, "top_k": 20, "repeat_penalty": 1.05},
@@ -89,7 +89,7 @@ CATALOG: list[LocalModel] = [
         gpu_gb=8,  # 5.6 GB in memory: the download includes an image encoder that translation doesn't load
         style=PromptStyle.GENERAL,
         language_codes=languages.GENERAL,
-        licence="Apache 2.0",
+        license="Apache 2.0",
         summary="General model: reads the whole document first and keeps a glossary. 200+ languages.",
         homepage="https://ollama.com/library/qwen3.5",
         options={"temperature": 0.2, "top_p": 0.9},
@@ -104,7 +104,7 @@ CATALOG: list[LocalModel] = [
         gpu_gb=16,
         style=PromptStyle.TRANSLATEGEMMA,
         language_codes=languages.TRANSLATEGEMMA,
-        licence="Gemma Terms of Use",
+        license="Gemma Terms of Use",
         summary="The best quality of these models, made only for translation. 55 languages.",
         homepage="https://ollama.com/library/translategemma",
         options={"temperature": 0},

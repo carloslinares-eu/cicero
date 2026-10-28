@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 import re
 import threading
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
 class _QuietServer(ThreadingHTTPServer):
     def handle_error(self, request, client_address) -> None:
-        pass  # a client that hangs up mid-stream (a cancelled download) isn't an error here
+        pass  # a client that hangs up mid-stream (a canceled download) isn't an error here
 
 
 class FakeOllama:
@@ -23,7 +24,7 @@ class FakeOllama:
         self.files: dict[str, bytes] = {}  # extra GET paths (fake release downloads)
         self.brief = {"summary": "Quarterly results of a fruit company.", "glossary": [
             {"term": "Apple", "translation": "Manzana"}]}
-        self.answer_override = None  # a function(request) -> str, to simulate odd answers
+        self.answer_override: Callable[[dict], str] | None = None  # to simulate odd answers
         self._server = _QuietServer(("127.0.0.1", 0), self._handler())
         self.url = f"http://127.0.0.1:{self._server.server_address[1]}"
         threading.Thread(target=self._server.serve_forever, daemon=True).start()
@@ -32,12 +33,13 @@ class FakeOllama:
         self._server.shutdown()
         self._server.server_close()
 
-    def _handler(self):
+    def _handler(self) -> type[BaseHTTPRequestHandler]:
         fake = self
 
-        class Handler(BaseHTTPRequestHandler):
-            def log_message(self, *args) -> None:  # keep test output quiet
-                pass
+        # noinspection PyPep8Naming
+        class Handler(BaseHTTPRequestHandler):  # the do_GET/do_POST/do_DELETE names are http.server's
+            def log_message(self, format: str, *args) -> None:  # noqa: A002 - http.server's own signature
+                pass  # keep test output quiet
 
             def _send(self, payload, status: int = 200) -> None:
                 body = json.dumps(payload).encode()
@@ -53,18 +55,19 @@ class FakeOllama:
 
             def do_GET(self) -> None:
                 if self.path == "/api/version":
-                    return self._send({"version": "0.40.12"})
-                if self.path == "/api/tags":
-                    return self._send({"models": [{"name": name, "model": name} for name in sorted(fake.installed)]})
-                if self.path == "/api/ps":
-                    return self._send({"models": []})
-                if self.path in fake.files:
-                    return self._file(fake.files[self.path])
-                self._send({"error": "not found"}, 404)
+                    self._send({"version": "0.40.12"})
+                elif self.path == "/api/tags":
+                    self._send({"models": [{"name": name, "model": name} for name in sorted(fake.installed)]})
+                elif self.path == "/api/ps":
+                    self._send({"models": []})
+                elif self.path in fake.files:
+                    self._file(fake.files[self.path])
+                else:
+                    self._send({"error": "not found"}, 404)
 
             def _file(self, data: bytes) -> None:
                 start = 0
-                match = re.match(r"bytes=(\d+)-", self.headers.get("Range", ""))
+                match = re.match(r"bytes=(\d+)-", self.headers.get("Range") or "")
                 if match:
                     start = int(match.group(1))
                     if start >= len(data):
@@ -80,18 +83,20 @@ class FakeOllama:
 
             def do_POST(self) -> None:
                 body = self._body()
+                known = body.get("model") in fake.installed
                 if self.path == "/api/pull":
-                    return self._pull(body["model"])
-                if self.path == "/api/generate":
-                    if body["model"] not in fake.installed:
-                        return self._send({"error": f"model '{body['model']}' not found"}, 404)
-                    return self._send({"done": True})
-                if self.path == "/api/chat":
+                    self._pull(body["model"])
+                elif self.path in ("/api/generate", "/api/chat") and not known:
+                    if self.path == "/api/chat":
+                        fake.chats.append(body)
+                    self._send({"error": f"model '{body['model']}' not found"}, 404)
+                elif self.path == "/api/generate":
+                    self._send({"done": True})
+                elif self.path == "/api/chat":
                     fake.chats.append(body)
-                    if body["model"] not in fake.installed:
-                        return self._send({"error": f"model '{body['model']}' not found"}, 404)
-                    return self._send({"message": {"role": "assistant", "content": fake.answer(body)}})
-                self._send({"error": "not found"}, 404)
+                    self._send({"message": {"role": "assistant", "content": fake.answer(body)}})
+                else:
+                    self._send({"error": "not found"}, 404)
 
             def do_DELETE(self) -> None:
                 fake.installed.discard(self._body()["model"])

@@ -14,10 +14,12 @@ class FakeDeepLClient:
         self.calls: list[tuple] = []
         self.error = error
 
-    def get_source_languages(self):
+    @staticmethod
+    def get_source_languages():
         return [SimpleNamespace(code="EN", name="English"), SimpleNamespace(code="de", name="German")]
 
-    def get_target_languages(self):
+    @staticmethod
+    def get_target_languages():
         return [SimpleNamespace(code="EN-GB", name="English (British)"), SimpleNamespace(code="DE", name="German")]
 
     def translate_text(self, texts, **options):
@@ -26,7 +28,8 @@ class FakeDeepLClient:
             raise self.error
         return [SimpleNamespace(text=f"T:{text}") for text in texts]
 
-    def get_usage(self):
+    @staticmethod
+    def get_usage():
         return SimpleNamespace(character=SimpleNamespace(valid=True, count=1200, limit=500_000))
 
 

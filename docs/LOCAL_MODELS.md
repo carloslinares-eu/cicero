@@ -17,17 +17,17 @@ ways to do that, explains the choice, and describes the design.
 
 ## Options considered
 
-| | A. Managed Ollama (chosen) | B. Managed llama.cpp server | C. Inference inside Cicero |
-|---|---|---|---|
-| What Cicero downloads once | Ollama's standalone build, 1.6 GB on Windows (includes CUDA) | `llama-server`: 25 MB (CPU, Vulkan) to ~590 MB (CUDA 13 + runtime) | Python wheels: llama-cpp-python with CUDA, or CTranslate2 + PyTorch-free models |
-| Graphics cards | NVIDIA, AMD (ROCm/Vulkan), Apple, CPU fallback; detected by Ollama | One build per backend: Cicero must pick the right one | CUDA wheels only for some Python/CUDA combinations on Windows |
-| Fitting 8 GB | Ollama estimates memory and splits layers between GPU and CPU by itself | Cicero must choose `-ngl` and context size | Same as B |
-| Model files | `ollama pull`: resumable, verified, shared store; any GGUF on Hugging Face via `hf.co/…` | Cicero downloads GGUFs from Hugging Face itself | Cicero downloads model files itself |
-| Chat templates | From the model's manifest | From the GGUF (`--jinja`) | Must be reimplemented |
-| Process | `ollama serve` on a private port, hidden | `llama-server`, one process per model | In-process: a crash takes Cicero down |
-| PyInstaller exe | Unchanged | Unchanged | Gigabytes bigger |
-| Reuses the user's own Ollama | Yes, and its models | No | No |
-| Maintenance | Pin one Ollama release | Pin a build per backend; releases several times a day | Track wheel availability |
+|                              | A. Managed Ollama (chosen)                                                               | B. Managed llama.cpp server                                        | C. Inference inside Cicero                                                      |
+|------------------------------|------------------------------------------------------------------------------------------|--------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| What Cicero downloads once   | Ollama's standalone build, 1.6 GB on Windows (includes CUDA)                             | `llama-server`: 25 MB (CPU, Vulkan) to ~590 MB (CUDA 13 + runtime) | Python wheels: llama-cpp-python with CUDA, or CTranslate2 + PyTorch-free models |
+| Graphics cards               | NVIDIA, AMD (ROCm/Vulkan), Apple, CPU fallback; detected by Ollama                       | One build per backend: Cicero must pick the right one              | CUDA wheels only for some Python/CUDA combinations on Windows                   |
+| Fitting 8 GB                 | Ollama estimates memory and splits layers between GPU and CPU by itself                  | Cicero must choose `-ngl` and context size                         | Same as B                                                                       |
+| Model files                  | `ollama pull`: resumable, verified, shared store; any GGUF on Hugging Face via `hf.co/…` | Cicero downloads GGUFs from Hugging Face itself                    | Cicero downloads model files itself                                             |
+| Chat templates               | From the model's manifest                                                                | From the GGUF (`--jinja`)                                          | Must be reimplemented                                                           |
+| Process                      | `ollama serve` on a private port, hidden                                                 | `llama-server`, one process per model                              | In-process: a crash takes Cicero down                                           |
+| PyInstaller exe              | Unchanged                                                                                | Unchanged                                                          | Gigabytes bigger                                                                |
+| Reuses the user's own Ollama | Yes, and its models                                                                      | No                                                                 | No                                                                              |
+| Maintenance                  | Pin one Ollama release                                                                   | Pin a build per backend; releases several times a day              | Track wheel availability                                                        |
 
 **Option C** is ruled out by packaging alone. Also, the best open translation
 models are now LLMs, while CTranslate2's classic NMT models (NLLB, MADLAD) are
@@ -43,22 +43,22 @@ handling, and a stable HTTP API. The code is behind an `OllamaRuntime` and an
 
 ## Models
 
-Chosen for quality, for running on 8–16 GB, and for licences that allow use in the
+Chosen for quality, for running on 8–16 GB, and for licenses that allow use in the
 EU. They are listed in `cicero/core/local/catalog.py`; adding one is one entry.
 
-| Model | Ollama name | Download | GPU | Licence | Prompt style |
-|---|---|---|---|---|---|
-| TranslateGemma 4B (Google) | `translategemma:4b` | 3.3 GB | 8 GB | Gemma Terms of Use | `TRANSLATEGEMMA` |
-| Hy-MT2 7B (Tencent) | `hf.co/tencent/Hy-MT2-7B-GGUF:Q4_K_M` | 4.6 GB | 8 GB | Apache 2.0 | `HY_MT` |
-| Qwen 3.5 9B (Alibaba) | `qwen3.5:9b` | 6.6 GB (5.6 GB in memory) | 8 GB | Apache 2.0 | `GENERAL` |
-| TranslateGemma 12B (Google) | `translategemma:12b` | 8.1 GB | 16 GB | Gemma Terms of Use | `TRANSLATEGEMMA` |
+| Model                       | Ollama name                           | Download                  | GPU   | License            | Prompt style     |
+|-----------------------------|---------------------------------------|---------------------------|-------|--------------------|------------------|
+| TranslateGemma 4B (Google)  | `translategemma:4b`                   | 3.3 GB                    | 8 GB  | Gemma Terms of Use | `TRANSLATEGEMMA` |
+| Hy-MT2 7B (Tencent)         | `hf.co/tencent/Hy-MT2-7B-GGUF:Q4_K_M` | 4.6 GB                    | 8 GB  | Apache 2.0         | `HY_MT`          |
+| Qwen 3.5 9B (Alibaba)       | `qwen3.5:9b`                          | 6.6 GB (5.6 GB in memory) | 8 GB  | Apache 2.0         | `GENERAL`        |
+| TranslateGemma 12B (Google) | `translategemma:12b`                  | 8.1 GB                    | 16 GB | Gemma Terms of Use | `TRANSLATEGEMMA` |
 
 Left out:
 
-- **HY-MT1.5** (Tencent, 1.8B and 7B): its licence states that it *does not apply in
+- **HY-MT1.5** (Tencent, 1.8B and 7B): its license states that it *does not apply in
   the European Union, the United Kingdom and South Korea*.
-- **Tower+, Aya Expanse, NLLB**: non-commercial licences.
-- **Seed-X 7B**: no official quantised build at the time of writing.
+- **Tower+, Aya Expanse, NLLB**: non-commercial licenses.
+- **Seed-X 7B**: no official quantized build at the time of writing.
 
 ## The runtime
 
@@ -101,14 +101,14 @@ order and the slide or page it is on.
 
 Each model gets the context it was trained to use:
 
-| | TranslateGemma | Hy-MT2 | General (Qwen 3.5) |
-|---|---|---|---|
-| Source language | Given, or detected from the whole document (langdetect) | Not needed | Not needed |
-| Reads the whole document first | No | No | Yes: a brief and a glossary |
-| Glossary | No | Tencent's terminology prompt | In the system prompt |
-| Earlier paragraphs on the same page | No (2K-token prompt, single message) | Tencent's background-information prompt | Originals and their translations |
-| Where the paragraph is | No | No | "the title of slide 2", "a table cell", "the speaker notes (written for the presenter)" |
-| Sampling | Greedy, as in the model card | Tencent's recommended settings | Low temperature, thinking off |
+|                                     | TranslateGemma                                          | Hy-MT2                                  | General (Qwen 3.5)                                                                      |
+|-------------------------------------|---------------------------------------------------------|-----------------------------------------|-----------------------------------------------------------------------------------------|
+| Source language                     | Given, or detected from the whole document (langdetect) | Not needed                              | Not needed                                                                              |
+| Reads the whole document first      | No                                                      | No                                      | Yes: a brief and a glossary                                                             |
+| Glossary                            | No                                                      | Tencent's terminology prompt            | In the system prompt                                                                    |
+| Earlier paragraphs on the same page | No (2K-token prompt, single message)                    | Tencent's background-information prompt | Originals and their translations                                                        |
+| Where the paragraph is              | No                                                      | No                                      | "the title of slide 2", "a table cell", "the speaker notes (written for the presenter)" |
+| Sampling                            | Greedy, as in the model card                            | Tencent's recommended settings          | Low temperature, thinking off                                                           |
 
 **The brief.** Before translating, a general model reads up to 16 000 characters
 of the document and answers, through Ollama's structured output (a JSON schema), with
@@ -117,7 +117,7 @@ with the translation to keep using: names, products, technical terms, acronyms. 
 paragraph's request then carries the summary and only the glossary terms that occur
 in that paragraph, which keeps prompts short for small models.
 
-**Neighbouring text.** Up to three earlier paragraphs of the same slide or page
+**Neighboring text.** Up to three earlier paragraphs of the same slide or page
 (300 characters each) go with each request: the original for Hy-MT2, and original
 plus translation for general models, which keeps terms and register consistent
 within a slide.
@@ -128,7 +128,7 @@ Cicero's `<span id="N">` run markup is rewritten as `<sN>…</sN>` tags, which s
 models keep more reliably, and only when a paragraph has more than one run (most
 have one and are sent as plain text). The answer is mapped back to spans; tags the
 model lost or invented are tolerated by `segments.decode_runs`, which never drops
-words. TranslateGemma keeps the tags in practice although it isn't trained for them;
+words. TranslateGemma keeps the tags in practice, although it isn't trained for them;
 Hy-MT2 gets Tencent's "retain the delimiters" prompt.
 
 ### Cleaning and retrying
@@ -144,11 +144,11 @@ language and is reported at the end.
 A three-slide business review (16 paragraphs, bold text in the middle of a
 sentence, a table and speaker notes), English to Spanish:
 
-| Model | First load | 16 paragraphs | In GPU memory |
-|---|---|---|---|
-| TranslateGemma 4B | 41 s (engine start and model load, the first time) | 30 s | 2.9 GB, all of it |
-| Hy-MT2 7B | 20 s | 18 s | 5.3 GB, all of it |
-| Qwen 3.5 9B | 11 s | 18–24 s, including reading the document | 5.6 GB, all of it |
+| Model             | First load                                         | 16 paragraphs                           | In GPU memory     |
+|-------------------|----------------------------------------------------|-----------------------------------------|-------------------|
+| TranslateGemma 4B | 41 s (engine start and model load, the first time) | 30 s                                    | 2.9 GB, all of it |
+| Hy-MT2 7B         | 20 s                                               | 18 s                                    | 5.3 GB, all of it |
+| Qwen 3.5 9B       | 11 s                                               | 18–24 s, including reading the document | 5.6 GB, all of it |
 
 In the window itself, with Hy-MT2 already downloaded: Cicero showed the green mark on
 opening, started its engine and loaded the model by itself in 8 s, translated the
@@ -158,12 +158,12 @@ All three kept the bold phrase bold and moved it to its place in the Spanish sen
 The differences are the ones the context strategy is about:
 
 - **TranslateGemma** (no context) translated the company name: "Northwind Analytics:
-  Q3 Business Review" became "Análisis de Northwind: Resumen del tercer trimestre".
-- **Hy-MT2** (earlier paragraphs as background) kept the name, and wrote *Fráncfort* and *T3*.
+  Q3 Business Review" became `Análisis de Northwind: Resumen del tercer trimestre`.
+- **Hy-MT2** (earlier paragraphs as background) kept the name, and wrote `Fráncfort` and `T3`.
 - **Qwen 3.5** first wrote an accurate summary and an eight-term glossary (keep
-  *Northwind Analytics* and *Insight Cloud*, *Frankfurt* → *Fráncfort*, *customer churn*
-  → *tasa de abandono de clientes*), then followed it in every paragraph; the table
-  header "Mitigation" matched the slide title's *medidas de mitigación*.
+  *Northwind Analytics* and *Insight Cloud*, *Frankfurt* → `Fráncfort`, *customer churn*
+  → `tasa de abandono de clientes`), then followed it in every paragraph; the table
+  header "Mitigation" matched the slide title's `medidas de mitigación`.
 
 All three put the speaker note "Thank everyone for coming and mention that…" in the first
 person, as if it were the presenter's script; telling Qwen the text is a speaker note

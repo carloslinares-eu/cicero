@@ -204,7 +204,7 @@ def test_engine_install_downloads_checks_and_unpacks(ollama, tmp_path, monkeypat
     executable = runtime.install(lambda progress: stages.append(progress.stage))
     assert executable == tmp_path / "ollama" / "v9.9.9" / "ollama.exe"
     assert (tmp_path / "ollama" / "v9.9.9" / "lib" / "ollama" / "readme.txt").is_file()
-    assert "Checking the download" in stages and not list(downloads.iterdir())  # archive removed afterwards
+    assert "Checking the download" in stages and not list(downloads.iterdir())  # archive removed afterward
     assert runtime.managed_executable() == executable
 
 
@@ -269,21 +269,21 @@ def test_tar_archives_unpack_safely_with_and_without_filters(tmp_path, monkeypat
         pytest.skip("this Python has no extraction filters (e.g. Debian 12's 3.11.2): only the fallback applies")
     monkeypatch.setattr("cicero.core.local.runtime.TAR_FILTERS", with_filters)  # False: as on Debian 12's 3.11.2
 
-    def archive(members) -> io.BytesIO:
+    def archive(entries: list[tuple[str, str | None]]) -> io.BytesIO:
         raw = io.BytesIO()
-        with tarfile.open(fileobj=raw, mode="w") as bundle:
-            for name, link in members:
+        with tarfile.open(fileobj=raw, mode="w") as writer:
+            for name, link in entries:
                 info = tarfile.TarInfo(name)
                 if link is None:
                     info.size, info.mode = 4, 0o4755
-                    bundle.addfile(info, io.BytesIO(b"data"))
+                    writer.addfile(info, io.BytesIO(b"data"))
                 else:
                     info.type, info.linkname = tarfile.SYMTYPE, link
-                    bundle.addfile(info)
+                    writer.addfile(info)
         raw.seek(0)
         return raw
 
-    members = [("bin/ollama", None), ("lib/ollama/libcudart.so.12.8", None)]
+    members: list[tuple[str, str | None]] = [("bin/ollama", None), ("lib/ollama/libcudart.so.12.8", None)]
     if sys.platform != "win32":  # creating symlinks needs special rights on Windows; Linux archives have them
         members.append(("lib/ollama/libcudart.so.12", "libcudart.so.12.8"))
     good = archive(members)
@@ -368,7 +368,7 @@ def test_general_model_reads_the_document_first(ollama, sample_deck):
     first = ollama.chats[0]
     assert first["format"]["required"] == ["summary", "glossary"] and "Quarterly results" in \
         first["messages"][0]["content"]
-    assert translator.brief.glossary == {"Apple": "Manzana"}
+    assert translator.brief is not None and translator.brief.glossary == {"Apple": "Manzana"}
     apple = next(chat for chat in ollama.chats[1:] if chat["messages"][-1]["content"] == "Apple")
     assert "Apple → Manzana" in apple["messages"][0]["content"]
     assert all(chat.get("think") is False for chat in ollama.chats)
@@ -408,10 +408,10 @@ def test_rambling_answers_are_retried_and_empty_ones_kept_in_the_original(ollama
         "1 paragraph(s) came back empty from TranslateGemma 4B and were left in the original language."]
 
 
-def test_a_model_that_isnt_downloaded_is_explained(ollama, sample_deck):
+def test_a_model_that_is_not_downloaded_is_explained(ollama, sample_deck):
     translator = LocalTranslator(catalog.get("translategemma-12b"), OllamaClient(ollama.url))
     result = TranslationJob(translator, JobOptions(sample_deck, sample_deck.with_name("o.pptx"), "es", "en")).run()
-    assert "isn't downloaded" in result.error
+    assert result.error is not None and "isn't downloaded" in result.error
 
 
 def test_every_style_has_a_prompt():

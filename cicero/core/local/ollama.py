@@ -51,7 +51,7 @@ class OllamaClient:
         return {model["name"] for model in models} | {model.get("model", "") for model in models}
 
     def has_model(self, name: str) -> bool:
-        return _normalise(name) in {_normalise(installed) for installed in self.installed_models()}
+        return _normalize(name) in {_normalize(installed) for installed in self.installed_models()}
 
     # -- downloads --------------------------------------------------------------
 
@@ -128,7 +128,7 @@ def _json_lines(response) -> Iterator[dict]:
             yield json.loads(line)
 
 
-def _normalise(name: str) -> str:
+def _normalize(name: str) -> str:
     name = name.strip().lower()
     return name if ":" in name.rsplit("/", 1)[-1] else f"{name}:latest"
 

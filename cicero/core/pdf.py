@@ -2,10 +2,10 @@
 
 A PDF has no paragraphs or text boxes, only glyphs placed at coordinates. PyMuPDF groups
 them into *blocks* (roughly paragraphs), *lines* and *spans* (text with one font, size and
-colour). Each block becomes one paragraph to translate, its spans the runs. On saving,
+color). Each block becomes one paragraph to translate, its spans the runs. On saving,
 the original glyphs of every translated block are removed with a redaction (pictures and
-drawings are kept) and the translation is laid out in the same rectangle as HTML,
-keeping each span's size, weight, style and colour, shrunk if needed to fit.
+drawings are kept). The translation is then laid out in the same rectangle as HTML. Each
+span keeps its size, weight, style and color, and the text shrinks only if it can't fit.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ ITALIC_FLAG = 2
 MONOSPACED_FLAG = 8
 SERIF_FLAG = 4
 PAGE_MARGIN = 18  # points kept clear at the page edge when a translation needs more room
-GAP = 3  # points kept clear of neighbouring text, images and frame edges
+GAP = 3  # points kept clear of neighboring text, images and frame edges
 
 
 @dataclass(slots=True)
@@ -189,17 +189,17 @@ def _is_centered(rect: pymupdf.Rect, lines: list[dict]) -> bool:
         return False
     middle = (rect.x0 + rect.x1) / 2
     widths = [line["bbox"][2] - line["bbox"][0] for line in lines]
-    centred = all(abs((line["bbox"][0] + line["bbox"][2]) / 2 - middle) < 2 for line in lines)
-    return centred and max(widths) - min(widths) > 4
+    centered = all(abs((line["bbox"][0] + line["bbox"][2]) / 2 - middle) < 2 for line in lines)
+    return centered and max(widths) - min(widths) > 4
 
 
 def _layout_rect(region: _Region, page: pymupdf.Rect, layout: _PageLayout) -> pymupdf.Rect:
     """Where the translation is laid out: the original box, grown into the free space around it.
 
-    Translations are often longer than the original. Before the text has to shrink, the box
-    may grow down (and, for a single left-aligned line such as a title or label, to the
-    right) until it would touch another text block or image, the edge of a drawn frame
-    it sits in, or the page margin.
+    Translations are often longer than the original, so before the text has to shrink, the box
+    may grow down. A single left-aligned line, such as a title or a label, may also grow to
+    the right. Either way it stops before another text block or image, the edge of a drawn
+    frame it sits in, or the page margin.
     """
     original = region.rect
     frames = [box for box in layout.boxes if box.contains(original) and box != original]

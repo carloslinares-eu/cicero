@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import html
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import pytest
@@ -25,9 +25,10 @@ class FakeTranslator:
         self.max_segments = 100
         self.max_characters = 10_000
         self.requests: list[tuple[list[str], str, str | None]] = []
-        self.on_request = None  # optional hook called before each request
+        self.on_request: Callable[[int], object] | None = None  # optional hook called before each request
 
-    def languages(self) -> list[Language]:
+    @staticmethod
+    def languages() -> list[Language]:
         return list(LANGUAGES)
 
     def translate(self, html_segments: Sequence[str], target: str, source: str | None = None) -> list[str]:
@@ -84,11 +85,13 @@ def sample_deck(tmp_path: Path) -> Path:
     return path
 
 
+# noinspection HttpUrlsUsage
 SMARTART_DATA = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <dgm:dataModel xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram"
     xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><dgm:ptLst>{points}</dgm:ptLst></dgm:dataModel>"""
 SMARTART_POINT = ('<dgm:pt modelId="{{{index}}}"><dgm:t><a:bodyPr/><a:p><a:r><a:rPr lang="en-US" b="1"/>'
                   '<a:t>{text}</a:t></a:r></a:p></dgm:t></dgm:pt>')
+# noinspection HttpUrlsUsage
 SMARTART_DRAWING = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <dsp:drawing xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram"
     xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><dsp:spTree>{shapes}</dsp:spTree></dsp:drawing>"""
@@ -147,8 +150,10 @@ def sample_docx(tmp_path: Path) -> Path:
     run.add_text("Madrid")
     document.add_paragraph("2024 – 42 %")
     linked = document.add_paragraph("See ")
+    # noinspection PyProtectedMember
     linked._p.append(parse_xml(f'<w:hyperlink {nsdecls("w", "r")} r:id="rIdX"><w:r><w:t>our website</w:t></w:r>'
                                '</w:hyperlink>'))
+    # noinspection PyProtectedMember
     document.add_paragraph("Page ")._p.append(parse_xml(  # a run with a picture must not be emptied
         f'<w:r {nsdecls("w")}><w:t xml:space="preserve">with picture </w:t><w:drawing/></w:r>'))
 

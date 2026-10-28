@@ -22,7 +22,7 @@ from cicero.core.job import JobOptions, JobResult, Phase, Progress, TranslationJ
 from cicero.core.local import catalog
 from cicero.core.local.hardware import detect_gpu, fit_note
 from cicero.core.local.ollama import PullProgress
-from cicero.core.local.runtime import DownloadProgress, OllamaRuntime
+from cicero.core.local.runtime import DownloadProgress, EngineRuntime, OllamaRuntime
 from cicero.core.local.translator import LocalTranslator
 from cicero.core.secrets import load_deepl_key, save_deepl_key
 from cicero.core.settings import Settings
@@ -45,10 +45,10 @@ DOCUMENT_TYPES += [(name, f"*{ext}") for ext, name in SUPPORTED.items()]
 
 class MainWindow:
     def __init__(self, root: tk.Tk | tk.Toplevel, settings: Settings | None = None, autoconnect: bool = True,
-                 runtime: OllamaRuntime | None = None) -> None:
+                 runtime: EngineRuntime | None = None) -> None:
         self.root = root
         self.settings = settings or Settings.load()
-        self.runtime = runtime or OllamaRuntime()
+        self.runtime: EngineRuntime = runtime or OllamaRuntime()
         self.local_model = catalog.get(self.settings.local_model)
         self._download_cancel: threading.Event | None = None
         self._download_progress: PullProgress | DownloadProgress | None = None  # written by the download thread
@@ -284,7 +284,7 @@ class MainWindow:
             self.local_status.set(f"Not downloaded ({model.download_gb:.1f} GB{engine_too})")
             self.local_status_label.configure(foreground=MUTED)
             self.download_button.configure(text="Download")
-        self.local_note.set(f"{model.maker} · {model.summary} · Licence: {model.licence} · "
+        self.local_note.set(f"{model.maker} · {model.summary} · License: {model.license} · "
                             f"{fit_note(model.gpu_gb, detect_gpu())}")
 
     def _on_local_model_changed(self) -> None:
@@ -314,7 +314,10 @@ class MainWindow:
             self._download()
 
     def _download(self) -> None:
-        """Download the engine if needed, then the model, on a background thread. Both resume if stopped."""
+        """Download the engine if needed, then the model, on a background thread.
+
+        Both continue where they stopped if the download is canceled or interrupted.
+        """
         model, runtime = self.local_model, self.runtime
         cancel = threading.Event()
         self._download_cancel = cancel
@@ -523,36 +526,43 @@ class MainWindow:
     # ------------------------------------------------------------- the job
 
     def _validate(self) -> JobOptions | None:
-        def problem(message: str) -> None:
-            messagebox.showwarning(__app_name__, message, parent=self.root)
-
+        """The job's options, or None after telling the user what to fix."""
         source = Path(self.input_path.get().strip())
-        output_text = self.output_path.get().strip()
-        if not source.is_file():
-            return problem(f"The file to translate doesn't exist:\n{source}")
-        if not is_supported(source):
-            return problem("Cicero translates PowerPoint .pptx, Word .docx and PDF files. Open older .ppt or "
-                           ".doc files in PowerPoint or Word and save them as .pptx or .docx first.")
-        if self.target_box.code is None:
-            return problem("Choose the language to translate into.")
-        if not self.source_box.is_valid:
-            return problem("The “From” language isn't in the list. Choose one, or “Detect automatically”.")
-        if self.source_box.code and self.source_box.code == self.target_box.code:
-            return problem("The “From” and “Into” languages are the same.")
-        output = Path(output_text)
+        output = Path(self.output_path.get().strip())
         if output.suffix.lower() != source.suffix.lower():
             output = output.with_name(output.name + source.suffix.lower())
             self.output_path.set(str(output))
-        if not output.parent.is_dir():
-            return problem(f"The folder to save into doesn't exist:\n{output.parent}")
-        if output.resolve() == source.resolve():
-            return problem("Choose a different file to save the translation to, so the original is kept.")
+        target = self.target_box.code
+        problem = self._problem_with(source, output, target)
+        if problem is not None:
+            messagebox.showwarning(__app_name__, problem, parent=self.root)
+            return None
+        assert target is not None  # _problem_with checked it
         confirmed = str(output) == self._confirmed_output  # the save dialog already asked
         if output.exists() and not confirmed and not messagebox.askyesno(
                 __app_name__, f"{output.name} already exists. Replace it?", parent=self.root):
             return None
-        return JobOptions(source, output, self.target_box.code, self.source_box.code, self.write_review.get(),
+        return JobOptions(source, output, target, self.source_box.code, self.write_review.get(),
                           self.include_masters.get() and source.suffix.lower() == ".pptx")
+
+    def _problem_with(self, source: Path, output: Path, target: str | None) -> str | None:
+        """What is wrong with the files and languages chosen, or None if nothing is."""
+        if not source.is_file():
+            return f"The file to translate doesn't exist:\n{source}"
+        if not is_supported(source):
+            return ("Cicero translates PowerPoint .pptx, Word .docx and PDF files. Open older .ppt or .doc files in "
+                    "PowerPoint or Word and save them as .pptx or .docx first.")
+        if target is None:
+            return "Choose the language to translate into."
+        if not self.source_box.is_valid:
+            return "The “From” language isn't in the list. Choose one, or “Detect automatically”."
+        if self.source_box.code and self.source_box.code == target:
+            return "The “From” and “Into” languages are the same."
+        if not output.parent.is_dir():
+            return f"The folder to save into doesn't exist:\n{output.parent}"
+        if output.resolve() == source.resolve():
+            return "Choose a different file to save the translation to, so the original is kept."
+        return None
 
     def start(self) -> None:
         if self.job is not None or self.translator is None:
@@ -625,7 +635,7 @@ class MainWindow:
         if progress.phase is Phase.TRANSLATING and progress.characters_total:
             self.status_text.set(f"Translating… {progress.fraction:.0%}")
         else:
-            self.status_text.set(f"{progress.phase.value}…")
+            self.status_text.set(f"{progress.phase.text}…")
         self._render_counters(progress)
 
     def _render_counters(self, progress: Progress) -> None:

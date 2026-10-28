@@ -70,6 +70,7 @@ def test_source_language_is_passed_on(fake_translator, sample_deck):
 def test_review_spreadsheet(fake_translator, sample_deck):
     _, result, output = run_job(fake_translator, sample_deck, write_review=True)
     assert result.review_path == output.with_suffix(".csv")
+    assert result.review_path is not None
     with open(result.review_path, encoding="utf-8-sig", newline="") as file:
         rows = list(csv.DictReader(file))
     assert rows[0] == {"Slide": "1", "Location": "Title 1", "Original": "Quarterly results",
@@ -80,7 +81,11 @@ def test_review_spreadsheet(fake_translator, sample_deck):
 def test_stop_saves_nothing(fake_translator, sample_deck):
     fake_translator.max_segments = 1  # one paragraph per request
     job = TranslationJob(fake_translator, JobOptions(sample_deck, sample_deck.with_name("out.pptx"), "es"))
-    fake_translator.on_request = lambda number: job.cancel() if number == 1 else None
+    def stop_at_the_second_request(number: int) -> None:
+        if number == 1:
+            job.cancel()
+
+    fake_translator.on_request = stop_at_the_second_request
     result = job.run()
     assert result.cancelled and not result.succeeded
     assert len(fake_translator.requests) == 2
@@ -91,7 +96,7 @@ def test_errors_are_reported_not_raised(fake_translator, tmp_path):
     bad = tmp_path / "bad.pptx"
     bad.write_text("not a presentation")
     _, result, output = run_job(fake_translator, bad)
-    assert "isn't a PowerPoint" in result.error
+    assert result.error is not None and "isn't a PowerPoint" in result.error
     assert not output.exists()
     assert list(tmp_path.glob("*.cicero-partial")) == []
 
@@ -125,6 +130,7 @@ def smartart_texts(path: Path) -> dict[str, list[str]]:
     for relationship in slide_part.rels.values():
         if relationship.reltype in SMARTART_RELATIONSHIPS:
             root = etree.fromstring(relationship.target_part.blob)
+            # noinspection HttpUrlsUsage
             texts[relationship.target_part.partname.rsplit("/", 1)[-1]] = [
                 node.text for node in root.iter("{http://schemas.openxmlformats.org/drawingml/2006/main}t")]
     return texts

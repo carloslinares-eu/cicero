@@ -1,23 +1,18 @@
-<p align="center">
-  <img src="cicero/assets/cicero-64.png" width="64" alt="Cicero icon: a wise Roman orator with a white beard and a laurel wreath">
-</p>
+![Cicero icon: a wise Roman orator with a white beard and a laurel wreath](cicero/assets/cicero-64.png)
 
-<h1 align="center">Cicero</h1>
+# Cicero
 
-<p align="center">
-  Translates PowerPoint presentations, Word documents and PDFs with Google Cloud Translation, DeepL or an open model running on your own computer, keeping their layout and formatting.
-</p>
+Translates PowerPoint presentations, Word documents and PDFs with Google Cloud Translation, DeepL or an open
+model running on your own computer, keeping their layout and formatting.
 
-<p align="center">
-  <img src="docs/images/screenshot.png" width="640" alt="The Cicero window while translating">
-</p>
+![The Cicero window while translating](docs/images/screenshot.png)
 
 Pick a `.pptx` presentation, a `.docx` Word document or a `.pdf` and a language. Cicero
 finds the text on every slide or page (titles, text boxes, shapes inside groups,
 tables, SmartArt, speaker notes; in Word also headers, footers and footnotes),
 sends it to Google Cloud Translation, DeepL or a model on your own computer, and
 writes a translated copy next to the original. Fonts,
-colours, bold words and links stay where they were. The original file is never
+colors, bold words and links stay where they were. The original file is never
 changed.
 
 ## Features
@@ -31,7 +26,7 @@ changed.
 - **Word documents too.** Body text, tables (including tables in tables), text
   boxes, headers, footers, footnotes, endnotes and comments.
 - **PDFs too.** Text is replaced where it stands, in the same font size, weight
-  and colour; pictures, drawings and backgrounds stay untouched.
+  and color; pictures, drawings and backgrounds stay untouched.
 - **Repeated text is translated once.** A footer on every slide is sent to Google
   (and billed) only once.
 - **Three ways to translate.** Google Cloud Translation (about 190 languages),
@@ -136,12 +131,12 @@ what is and isn't translated, and troubleshooting.
 
 ## How it works
 
-| Step | What happens |
-|------|--------------|
-| 1. Reading | The file is searched for paragraphs with letters in them: on slides, shapes (including inside groups), table cells, SmartArt and notes; in Word, the body, tables, text boxes, headers, footers and notes; in a PDF, each block of text. |
-| 2. Packing | Each paragraph's runs are wrapped in numbered `<span>` tags, so the translator sees one sentence but knows which words belonged to which run. |
+| Step           | What happens                                                                                                                                                                                                                                                   |
+|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1. Reading     | The file is searched for paragraphs with letters in them: on slides, shapes (including inside groups), table cells, SmartArt and notes; in Word, the body, tables, text boxes, headers, footers and notes; in a PDF, each block of text.                       |
+| 2. Packing     | Each paragraph's runs are wrapped in numbered `<span>` tags, so the translator sees one sentence but knows which words belonged to which run.                                                                                                                  |
 | 3. Translating | Each distinct paragraph is sent once, in batches (Google Cloud Translation v3: up to 100 paragraphs; DeepL: up to 50), with HTML tag handling so the run markers survive. Local models get one paragraph at a time, with the context they were trained to use. |
-| 4. Saving | Each translation is split back into its runs, keeping their formatting (in a PDF, the original text is removed and the translation laid out in its place), and the copy is saved through a temporary file. |
+| 4. Saving      | Each translation is split back into its runs, keeping their formatting (in a PDF, the original text is removed and the translation laid out in its place), and the copy is saved through a temporary file.                                                     |
 
 More detail is in [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

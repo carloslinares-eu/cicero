@@ -16,6 +16,7 @@ from cicero.core.review import review_path_for, write_review
 from cicero.core.translator import (
     MAX_CHARACTERS_PER_REQUEST,
     MAX_SEGMENTS_PER_REQUEST,
+    ContextualTranslator,
     SegmentInfo,
     Translator,
     batches,
@@ -31,6 +32,11 @@ class Phase(enum.Enum):
     TRANSLATING = "Translating"
     SAVING = "Saving"
     FINISHED = "Finished"
+
+    @property
+    def text(self) -> str:
+        """What the window shows while the job is in this phase."""
+        return str(self.value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,17 +170,13 @@ class TranslationJob:
             owners.setdefault(block.source_html, []).append(index)
         segments = list(owners)
         total = sum(len(segment) for segment in segments)
-        prepare = getattr(self.translator, "prepare", None)
-        if prepare is not None and segments:
+        if isinstance(self.translator, ContextualTranslator) and segments:
             self._set_progress(Phase.PREPARING, characters_total=total, paragraphs_total=len(blocks),
                                pages_total=result.pages, unit=result.unit)
             first = [blocks[owners[segment][0]] for segment in segments]
             infos = [SegmentInfo(segment, block.page, block.location) for segment, block in zip(segments, first)]
-            try:
-                prepare(infos, options.target_language, options.source_language, cancel=self._cancel,
-                        unit=document.unit)
-            except TypeError:  # a translator whose prepare() predates the unit argument
-                prepare(infos, options.target_language, options.source_language, cancel=self._cancel)
+            self.translator.prepare(infos, options.target_language, options.source_language, cancel=self._cancel,
+                                    unit=document.unit)
             self._check_cancelled()
         done = paragraphs_done = 0
         self._set_progress(Phase.TRANSLATING, characters_total=total, paragraphs_total=len(blocks),

@@ -17,7 +17,7 @@ def review_path_for(output: str | Path) -> Path:
 
 def write_review(path: str | Path, blocks: Iterable[TextBlock], unit: str | None = "slide") -> None:
     """One row per paragraph. ``unit`` names the first column ("slide", "page"); None leaves it out."""
-    # utf-8-sig so Excel recognises the encoding and accents display correctly.
+    # utf-8-sig so Excel recognizes the encoding and accents display correctly.
     try:
         with open(path, "w", newline="", encoding="utf-8-sig") as file:
             writer = csv.writer(file)

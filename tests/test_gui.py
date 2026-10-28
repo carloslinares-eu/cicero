@@ -19,6 +19,7 @@ def tk_root():
         interpreter = tk.Tk()
     except tk.TclError as exc:
         pytest.skip(f"no display: {exc}")
+        return
     interpreter.withdraw()
     yield interpreter
     interpreter.destroy()
@@ -57,7 +58,7 @@ class FakeRuntime:
 
     installed: set = set()
 
-    def install(self, on_progress=None, cancel=None) -> None:
+    def install(self, on_progress=None, _cancel=None) -> None:
         from cicero.core.local.runtime import DownloadProgress
 
         self.installs += 1
@@ -68,7 +69,7 @@ class FakeRuntime:
     def client(self):
         from cicero.core.local.ollama import OllamaClient
 
-        return OllamaClient(self.url)
+        return OllamaClient(self.url or "http://127.0.0.1:9")
 
     def stop(self) -> None:
         self.stopped = True
@@ -158,7 +159,7 @@ def test_header_shows_logo_name_and_version(window):
 
 
 @pytest.fixture
-def local_window(window, monkeypatch):
+def local_window(window):
     from tests.fake_ollama import FakeOllama
 
     server = FakeOllama()
@@ -173,7 +174,8 @@ def wait_for(window, condition, seconds: float = 10) -> None:
 
     deadline = time.monotonic() + seconds
     while not condition() and time.monotonic() < deadline:
-        window._poll()
+        # noinspection PyProtectedMember
+        window._poll()  # what the window's own timer calls
         time.sleep(0.02)
     assert condition()
 
@@ -187,7 +189,7 @@ def test_local_model_download_shows_progress_then_the_green_mark(local_window):
     window._on_engine_changed()
     assert window.local_status.get() == "Not downloaded (3.3 GB + 1.6 GB engine, once)"
     assert window.download_button.cget("text") == "Download" and window.translator is None
-    assert "Licence: Gemma Terms of Use" in window.local_note.get()
+    assert "License: Gemma Terms of Use" in window.local_note.get()
 
     window._download()
     assert window.download_button.cget("text") == "Cancel" and window.model_box.instate(["disabled"])
@@ -222,7 +224,7 @@ def test_choosing_a_downloaded_model_connects_and_remove_frees_it(local_window, 
     assert window.download_button.cget("text") == "Download"
 
 
-def test_closing_stops_ciceros_model_server(window):
+def test_closing_stops_the_model_server_cicero_started(window):
     runtime = window.runtime
     window._on_close()
     assert runtime.stopped

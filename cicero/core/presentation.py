@@ -13,7 +13,8 @@ from pptx.opc.package import Part, XmlPart
 from pptx.oxml import parse_xml
 from pptx.presentation import Presentation
 from pptx.shapes.group import GroupShape
-from pptx.text.text import TextFrame, _Paragraph
+# noinspection PyProtectedMember
+from pptx.text.text import TextFrame, _Paragraph  # python-pptx has no public paragraph type for SmartArt XML
 
 from cicero.core.blocks import TextBlock, make_block, save_atomically
 from cicero.core.errors import DocumentError
@@ -21,9 +22,11 @@ from cicero.core.errors import DocumentError
 # SmartArt keeps its text in a "data model" part, and PowerPoint 2007+ also caches the
 # rendered shapes, text included, in a "drawing" part. Both are translated so the cached
 # drawing matches the data until PowerPoint redraws it.
-RT_DIAGRAM_DRAWING = "http://schemas.microsoft.com/office/2007/relationships/diagramDrawing"
+# noinspection HttpUrlsUsage
+RT_DIAGRAM_DRAWING = "http://schemas.microsoft.com/office/2007/relationships/diagramDrawing"  # a name, not a link
 SMARTART_RELATIONSHIPS = (RT.DIAGRAM_DATA, RT_DIAGRAM_DRAWING)
-A_P = "{http://schemas.openxmlformats.org/drawingml/2006/main}p"
+# noinspection HttpUrlsUsage
+A_P = "{http://schemas.openxmlformats.org/drawingml/2006/main}p"  # XML namespaces must be written exactly so
 
 
 class PptxDocument:
@@ -129,7 +132,8 @@ class _XmlBlob:
 
     def __init__(self, part: Part) -> None:
         self.part = part
-        self.element = part._element if isinstance(part, XmlPart) else parse_xml(part.blob)
+        # noinspection PyProtectedMember
+        self.element = part._element if isinstance(part, XmlPart) else parse_xml(part.blob)  # no public accessor
 
     def paragraphs(self) -> list[_Paragraph]:
         # parse_xml gives python-pptx's own element classes, so <a:p> works with its text API.

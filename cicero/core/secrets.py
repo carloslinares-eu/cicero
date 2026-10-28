@@ -7,6 +7,7 @@ the ``keyring`` package. If no store is available the key simply isn't remembere
 from __future__ import annotations
 
 import logging
+from types import ModuleType
 
 log = logging.getLogger(__name__)
 
@@ -14,7 +15,8 @@ SERVICE = "Cicero"
 DEEPL_ACCOUNT = "deepl-auth-key"
 
 
-def _keyring():
+def _store() -> ModuleType | None:
+    """The ``keyring`` module, or None if it isn't installed."""
     try:
         import keyring
     except ImportError:
@@ -23,27 +25,29 @@ def _keyring():
 
 
 def load_deepl_key() -> str:
-    keyring = _keyring()
-    if keyring is None:
+    store = _store()
+    if store is None:
         return ""
+    # noinspection PyBroadException
     try:
-        return keyring.get_password(SERVICE, DEEPL_ACCOUNT) or ""
-    except Exception:  # keyring backends raise their own error types
+        return store.get_password(SERVICE, DEEPL_ACCOUNT) or ""
+    except Exception:  # each backend (Windows, macOS, D-Bus Secret Service…) raises its own error types
         log.warning("Could not read the DeepL key from the credential store", exc_info=True)
         return ""
 
 
 def save_deepl_key(key: str) -> bool:
     """Store the key, or delete it when ``key`` is empty. Returns False if there's no usable store."""
-    keyring = _keyring()
-    if keyring is None:
+    store = _store()
+    if store is None:
         return False
+    # noinspection PyBroadException
     try:
         if key:
-            keyring.set_password(SERVICE, DEEPL_ACCOUNT, key)
-        elif keyring.get_password(SERVICE, DEEPL_ACCOUNT) is not None:
-            keyring.delete_password(SERVICE, DEEPL_ACCOUNT)
+            store.set_password(SERVICE, DEEPL_ACCOUNT, key)
+        elif store.get_password(SERVICE, DEEPL_ACCOUNT) is not None:
+            store.delete_password(SERVICE, DEEPL_ACCOUNT)
         return True
-    except Exception:
+    except Exception:  # as above: there is no common base class for the backends' errors
         log.warning("Could not update the DeepL key in the credential store", exc_info=True)
         return False

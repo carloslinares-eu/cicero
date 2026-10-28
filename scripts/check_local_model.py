@@ -3,11 +3,11 @@
 Does what a user does in the window, without the window: installs Cicero's own copy of
 Ollama if needed, downloads a model, translates a generated three-slide presentation
 and checks the result. Run it after changing cicero/core/local/, after updating the
-pinned Ollama release, and on each operating system Cicero supports:
+pinned Ollama release, and on each operating system Cicero supports. Examples::
 
-    python scripts/check_local_model.py                       # TranslateGemma 4B, into Spanish
-    python scripts/check_local_model.py hy-mt2-7b --target de
-    python scripts/check_local_model.py --managed             # ignore an Ollama already running
+    scripts/check_local_model.py                       # TranslateGemma 4B, into Spanish
+    scripts/check_local_model.py hy-mt2-7b --target de
+    scripts/check_local_model.py --managed             # ignore an Ollama already running
 
 The first run downloads the engine (about 1.6 GB) and the model (3–8 GB).
 Exits with 0 when the translation looks right, 1 otherwise.
@@ -31,7 +31,7 @@ from pptx.util import Inches  # noqa: E402
 from cicero.core.job import JobOptions, TranslationJob  # noqa: E402
 from cicero.core.local import catalog  # noqa: E402
 from cicero.core.local.hardware import detect_gpu  # noqa: E402
-from cicero.core.local.runtime import OllamaRuntime  # noqa: E402
+from cicero.core.local.runtime import DownloadProgress, OllamaRuntime  # noqa: E402
 from cicero.core.local.translator import LocalTranslator  # noqa: E402
 
 
@@ -55,13 +55,13 @@ def build_deck(path: Path) -> None:
     slide.shapes.title.text = "Risks and mitigations"
     table = slide.shapes.add_table(2, 2, Inches(0.5), Inches(1.6), Inches(9), Inches(1.5)).table
     table.cell(0, 0).text, table.cell(0, 1).text = "Risk", "Mitigation"
-    table.cell(1, 0).text = "Delays in the data centre in Frankfurt"
+    table.cell(1, 0).text = "Delays in the data center in Frankfurt"
     table.cell(1, 1).text = "Keep the Dublin region as a fallback until March."
     deck.save(path)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description="End-to-end check of local models on this computer.")
     parser.add_argument("model", nargs="?", default=catalog.DEFAULT_KEY, choices=[m.key for m in catalog.CATALOG])
     parser.add_argument("--target", default="es", help="language code to translate into (default: es)")
     parser.add_argument("--managed", action="store_true", help="use Cicero's own Ollama, not one already running")
@@ -77,7 +77,7 @@ def main() -> int:
         print("Installing the engine…", flush=True)
         last = [0.0]
 
-        def report(progress) -> None:
+        def report(progress: DownloadProgress) -> None:
             if time.monotonic() - last[0] >= 10:  # a line every 10 s is enough in a log
                 last[0] = time.monotonic()
                 print(f"  {progress.stage}: {progress.done / 1e6:,.0f} / {progress.total / 1e6:,.0f} MB", flush=True)
@@ -104,6 +104,7 @@ def main() -> int:
             print(f"FAILED: {result.error}")
             return 1
         print(f"Translated {result.paragraphs} paragraphs in {result.elapsed:.0f} s")
+        assert result.review_path is not None  # write_review=True
         with open(result.review_path, encoding="utf-8-sig") as file:
             rows = list(csv.DictReader(file))
         for row in rows:

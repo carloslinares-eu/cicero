@@ -1,14 +1,14 @@
 """Packing a paragraph's runs into one string for the translator, and unpacking the translation.
 
 A PowerPoint paragraph is a list of *runs*: pieces of text that each carry their own
-formatting (a bold word, a link, a different colour). Translating runs one by one gives
-poor results, because the translator only sees sentence fragments. Instead the whole
+formatting (a bold word, a link, a different color). Translating runs one by one gives
+poor results, because the translator only sees sentence fragments. Instead, the whole
 paragraph is sent as HTML, each run wrapped in ``<span id="N">``. Google Cloud Translation
 keeps tags in place and moves them with the words they wrap, so the translated text of
 each run can be put back into the run it came from, keeping its formatting.
 
 Whitespace at the edges of runs, and tabs and line breaks inside them, would be lost in
-HTML, so edges are stripped before sending and restored afterwards, tabs travel as empty
+HTML, so edges are stripped before sending and restored afterward, tabs travel as empty
 marker tags and line breaks as ``<br>``.
 """
 
@@ -28,7 +28,7 @@ def needs_translation(text: str) -> bool:
 
 
 def split_edges(text: str) -> tuple[str, str, str]:
-    """``"  Hello world "`` → ``("  ", "Hello world", " ")``."""
+    """Split off the whitespace at both ends: ``split_edges("  Hi ")`` is ``("  ", "Hi", " ")``."""
     match = _EDGES.match(text)
     assert match is not None  # the pattern matches any string
     return match.group(1), match.group(2), match.group(3)

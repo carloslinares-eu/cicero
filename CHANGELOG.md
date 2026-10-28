@@ -48,7 +48,7 @@ slide masters, a status bar and a new icon.
   headers, footers, footnotes, endnotes and comments, keeping run formatting,
   links and line breaks. ([#11](https://github.com/carloslinares-eu/cicero/issues/11))
 - PDF files: each block of text is replaced in place with its translation,
-  keeping font size, weight, style and colour, and leaving pictures and drawings
+  keeping font size, weight, style and color, and leaving pictures and drawings
   untouched. Longer translations use the free space around them before being
   shrunk. Scanned and password-protected PDFs are explained.
   ([#19](https://github.com/carloslinares-eu/cicero/issues/19))
@@ -111,7 +111,7 @@ A rewrite on current libraries. The `cicero` package keeps its name but every mo
 
 - The PDF option. It was listed in the file dialog but never implemented.
 - `setup.py` (its `install_requires` named packages that don't exist on PyPI,
-  so it couldn't be installed) in favour of `pyproject.toml`.
+  so it couldn't be installed) in favor of `pyproject.toml`.
 
 ### Fixed
 
@@ -124,7 +124,7 @@ A rewrite on current libraries. The `cicero` package keeps its name but every mo
   `haw`, `ceb` and others; the source language choice was ignored.
 - Batches could exceed Google's request limits on large presentations.
 - Opening every slide's notes created empty notes pages in the output.
-- Cancelling the file dialog crashed the app; the opened file handle was never closed.
+- Canceling the file dialog crashed the app; the opened file handle was never closed.
 - The icon was looked up relative to the current folder, so the app wouldn't
   start from anywhere else, and `.ico` icons failed on Linux and macOS.
 

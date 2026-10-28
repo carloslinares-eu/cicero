@@ -59,7 +59,7 @@ def test_password_protected_pdf_is_explained(fake_translator, tmp_path):
     pdf.new_page().insert_text((72, 72), "Secret")
     pdf.save(source, encryption=pymupdf.PDF_ENCRYPT_AES_256, user_pw="pw", owner_pw="pw")
     result = TranslationJob(fake_translator, JobOptions(source, tmp_path / "out.pdf", "es")).run()
-    assert "password-protected" in result.error
+    assert result.error is not None and "password-protected" in result.error
 
 
 def test_longer_translations_use_free_space_instead_of_shrinking(fake_translator, tmp_path):
@@ -75,7 +75,7 @@ def test_longer_translations_use_free_space_instead_of_shrinking(fake_translator
     page.insert_text((40, 205), "Hire two engineers", fontname="helv", fontsize=10)
     pdf.save(source)
 
-    def longer(segments, target, source=None):
+    def longer(segments, _target, _source=None):
         return [re.sub(r">([^<]+)<", lambda m: ">" + html.escape(html.unescape(m.group(1)) + " (traducido)",
                                                                  quote=False) + "<", s) for s in segments]
 

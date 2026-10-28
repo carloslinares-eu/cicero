@@ -75,9 +75,9 @@ class LocalTranslator:
 
     # -- before translating ---------------------------------------------------------
 
-    def prepare(self, segments: Sequence[SegmentInfo], target: str, source: str | None,
-                on_status: Callable[[str], None] | None = None, cancel: threading.Event | None = None,
-                unit: str | None = "slide") -> None:
+    def prepare(self, segments: Sequence[SegmentInfo], target: str, source: str | None, *,
+                cancel: threading.Event | None = None, unit: str | None = "slide",
+                on_status: Callable[[str], None] | None = None) -> None:
         self.unit = unit
         self._infos = list(segments)
         self._positions = {info.html: position for position, info in enumerate(self._infos)}

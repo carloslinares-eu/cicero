@@ -32,6 +32,7 @@ import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 from cicero.core.errors import CiceroError, OperationCancelled
 from cicero.core.local.ollama import OllamaClient
@@ -124,6 +125,25 @@ def release_assets(amd_gpu: bool | None = None) -> list[str]:
     return []
 
 
+class EngineRuntime(Protocol):
+    """What the window needs from the engine; ``OllamaRuntime`` is the real one, tests pass a fake."""
+
+    @property
+    def owns_server(self) -> bool:
+        """True while a server Cicero started is running."""
+
+    def is_available(self) -> bool: ...
+
+    def model_ready(self, name: str) -> bool: ...
+
+    def install(self, on_progress: Callable[[DownloadProgress], None] | None = None,
+                cancel: threading.Event | None = None) -> object: ...
+
+    def client(self) -> OllamaClient: ...
+
+    def stop(self) -> None: ...
+
+
 class OllamaRuntime:
     """Owns the Ollama server Cicero talks to. Thread-safe; one per application."""
 
@@ -184,8 +204,9 @@ class OllamaRuntime:
     def client(self) -> OllamaClient:
         """A client for a running server, starting one if needed. Raises EngineError if there's none."""
         with self._lock:
-            if self._client is not None and self._client.is_up():
-                return self._client
+            current = self._client
+            if current is not None and current.is_up():
+                return current
             external = self._external_client()
             if external is not None:
                 log.info("Using the Ollama already running at %s", external.base_url)
@@ -194,8 +215,9 @@ class OllamaRuntime:
             executable = self.executable()
             if executable is None:
                 raise EngineError("The local model engine (Ollama) isn't installed yet.")
-            self._client = self._start(executable)
-            return self._client
+            started = self._start(executable)
+            self._client = started
+            return started
 
     @property
     def owns_server(self) -> bool:
@@ -419,12 +441,12 @@ def _extract_zst(archive: Path, target: Path) -> None:
     the ``zstandard`` package (installed with Cicero on Linux) or the system's ``tar`` does."""
     try:
         from compression import zstd  # Python 3.14+
-
+    except ImportError:
+        zstd = None
+    if zstd is not None:
         with zstd.open(archive, "rb") as stream, tarfile.open(fileobj=stream, mode="r|") as bundle:
             _extract_tar(bundle, target)
         return
-    except ImportError:
-        pass
     try:
         import zstandard
     except ImportError:

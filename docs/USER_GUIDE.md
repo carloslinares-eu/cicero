@@ -8,13 +8,13 @@ document (`.docx`) or a PDF using Google Cloud Translation or DeepL. The origina
 
 Cicero works with any of these; you only need one.
 
-| | Google Cloud Translation | DeepL | Local model |
-|---|---|---|---|
-| Languages | About 190 | Fewer, but with regional variants (British/American English, Brazilian/European Portuguese); the list appears when you connect | 38 to 200+, depending on the model |
-| Cost | A monthly free amount of characters, then per character | 500 000 characters a month free, then per character | Free; uses your computer's electricity |
-| Setup | Google Cloud project, API, service account key | DeepL account and an authentication key | None: choose a model and click Download |
-| Privacy | Your text goes to Google | Your text goes to DeepL | Nothing leaves your computer |
-| Speed | Fast | Fast | A few seconds per paragraph on a graphics card |
+|           | Google Cloud Translation                                | DeepL                                                                                                                          | Local model                                    |
+|-----------|---------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|
+| Languages | About 190                                               | Fewer, but with regional variants (British/American English, Brazilian/European Portuguese); the list appears when you connect | 38 to 200+, depending on the model             |
+| Cost      | A monthly free amount of characters, then per character | 500 000 characters a month free, then per character                                                                            | Free; uses your computer's electricity         |
+| Setup     | Google Cloud project, API, service account key          | DeepL account and an authentication key                                                                                        | None: choose a model and click Download        |
+| Privacy   | Your text goes to Google                                | Your text goes to DeepL                                                                                                        | Nothing leaves your computer                   |
+| Speed     | Fast                                                    | Fast                                                                                                                           | A few seconds per paragraph on a graphics card |
 
 With Google and DeepL your documents go straight from your computer to that service.
 With a local model they never leave your computer.
@@ -40,7 +40,7 @@ You need to do this once.
 Keep the key file private. Anyone who has it can translate text on your bill.
 See [Keeping your keys safe](#keeping-your-keys-safe).
 
-> **Can't create keys?** Organisations often forbid service account keys (the
+> **Can't create keys?** Organizations often forbid service account keys (the
 > policy `iam.disableServiceAccountKeyCreation`). Use Application Default
 > Credentials instead: install the [gcloud CLI](https://cloud.google.com/sdk/docs/install), run
 >
@@ -67,12 +67,12 @@ Keep the key private, like a password.
 A local model is an open translation model that runs on your own computer,
 ideally on its graphics card. Cicero offers four:
 
-| Model | Download | Graphics memory | Good for |
-|---|---|---|---|
-| **TranslateGemma 4B** (Google) | 3.3 GB | 8 GB | Fast, 55 languages; the default |
-| **Hy-MT2 7B** (Tencent) | 4.6 GB | 8 GB | Uses the surrounding text on each slide or page; 38 languages (many Asian ones, fewer European ones) |
-| **Qwen 3.5 9B** (Alibaba) | 6.6 GB | 8 GB | Reads the whole document first and keeps names and terms consistent; 200+ languages |
-| **TranslateGemma 12B** (Google) | 8.1 GB | 16 GB | The best quality of the four |
+| Model                           | Download | Graphics memory | Good for                                                                                             |
+|---------------------------------|----------|-----------------|------------------------------------------------------------------------------------------------------|
+| **TranslateGemma 4B** (Google)  | 3.3 GB   | 8 GB            | Fast, 55 languages; the default                                                                      |
+| **Hy-MT2 7B** (Tencent)         | 4.6 GB   | 8 GB            | Uses the surrounding text on each slide or page; 38 languages (many Asian ones, fewer European ones) |
+| **Qwen 3.5 9B** (Alibaba)       | 6.6 GB   | 8 GB            | Reads the whole document first and keeps names and terms consistent; 200+ languages                  |
+| **TranslateGemma 12B** (Google) | 8.1 GB   | 16 GB           | The best quality of the four                                                                         |
 
 The note under the model says whether it fits your graphics card. A model that
 doesn't fit still works: part of it runs on the processor, which is slower.
@@ -207,7 +207,7 @@ translated, and the status bar at the bottom of the window counts:
 
 When the job ends the status bar keeps the totals.
 
-The window stays usable and you can click **Stop** at any time:
+The window stays usable, and you can click **Stop** at any time:
 Cicero finishes the request already on its way to Google, then stops without
 saving anything.
 
@@ -218,25 +218,25 @@ open it.
 
 ### Presentations
 
-| Translated | Not translated |
-|------------|----------------|
-| Slide titles and placeholders | Text inside pictures |
-| Text boxes and shapes, including inside groups (and groups of groups) | Charts (titles, labels, data) |
-| Table cells | Comments |
-| SmartArt | |
-| Speaker notes | |
-| Slide masters and layouts, if you ask for it (see below) | |
-| | Text with no letters: numbers, dates such as `2024`, symbols, bullets |
+| Translated                                                            | Not translated                                                        |
+|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
+| Slide titles and placeholders                                         | Text inside pictures                                                  |
+| Text boxes and shapes, including inside groups (and groups of groups) | Charts (titles, labels, data)                                         |
+| Table cells                                                           | Comments                                                              |
+| SmartArt                                                              |                                                                       |
+| Speaker notes                                                         |                                                                       |
+| Slide masters and layouts, if you ask for it (see below)              |                                                                       |
+|                                                                       | Text with no letters: numbers, dates such as `2024`, symbols, bullets |
 
 ### Word documents
 
-| Translated | Not translated |
-|------------|----------------|
-| Body text, headings, lists | Text inside pictures |
-| Tables, including tables inside tables | Charts and SmartArt |
-| Text boxes | Field codes (tables of contents and page numbers update when Word refreshes fields) |
-| Headers and footers | Deleted text in tracked changes (insertions are translated) |
-| Footnotes, endnotes and comments | Text with no letters |
+| Translated                             | Not translated                                                                      |
+|----------------------------------------|-------------------------------------------------------------------------------------|
+| Body text, headings, lists             | Text inside pictures                                                                |
+| Tables, including tables inside tables | Charts and SmartArt                                                                 |
+| Text boxes                             | Field codes (tables of contents and page numbers update when Word refreshes fields) |
+| Headers and footers                    | Deleted text in tracked changes (insertions are translated)                         |
+| Footnotes, endnotes and comments       | Text with no letters                                                                |
 
 Word documents have no fixed pages (Word lays them out when it opens the file),
 so the status bar shows paragraphs and characters only, and the review
@@ -249,7 +249,7 @@ A PDF has no paragraphs or text boxes, only letters placed on the page. Cicero
 reads the text in blocks (roughly paragraphs), translates each block, removes the
 original letters and writes the translation in the same place:
 
-- Font size, bold, italic and colour are kept for each part of the block. The
+- Font size, bold, italic and color are kept for each part of the block. The
   typeface is replaced by a standard one of the same kind (sans-serif, serif or
   monospaced), because PDFs usually contain only the letters their text uses.
 - Pictures, drawings, lines, backgrounds and shaded boxes are not touched.
@@ -273,7 +273,7 @@ document (Word or PowerPoint), translating that gives better results.
 ### Formatting
 
 Each paragraph keeps its formatting. When a paragraph mixes formats (a bold word,
-a link, a colour), Cicero tells the translator which words belong together and
+a link, a color), Cicero tells the translator which words belong together and
 puts each part of the translation back into the matching run. Because word order
 changes between languages, the bold part may move within the sentence, which is
 what you want. Occasionally the translator merges two parts; their text then
@@ -281,7 +281,7 @@ takes the formatting of the first one.
 
 Translated text is often longer than the original (German and French are
 typically 20–30 % longer than English). PowerPoint's *Shrink text on overflow*
-setting helps; otherwise check slides with tight text boxes afterwards.
+setting helps; otherwise check slides with tight text boxes afterward.
 
 ## Keeping your keys safe
 

@@ -25,7 +25,7 @@ The tests don't need a Google account.
   ignored for that reason. Tests use `FakeTranslator`, never a real key.
 - **Never risk the user's files.** The input presentation is read-only; output goes
   through `save_presentation` (temporary file plus atomic rename).
-- Add or update tests in `tests/` for behaviour changes, and run `pytest` before
+- Add or update tests in `tests/` for behavior changes, and run `pytest` before
   sending a change.
 - Follow the style of the surrounding code: type hints, short docstrings,
   4-space indentation, lines up to about 120 characters.
@@ -37,9 +37,9 @@ The tests don't need a Google account.
 ## Adding a local model
 
 Add a `LocalModel` to `CATALOG` in `cicero/core/local/catalog.py`: its Ollama name
-(from the Ollama library, or `hf.co/<user>/<repo>:<quantisation>` for a GGUF on
+(from the Ollama library, or `hf.co/<user>/<repo>:<quantization>` for a GGUF on
 Hugging Face), download size, the graphics memory it needs, its prompt style, its
-languages (`languages.py`) and its licence. Check the licence allows use where
+languages (`languages.py`) and its license. Check the license allows use where
 Cicero's users are, use the prompt from the model card (`prompts.py`), and check it
 end to end before committing:
 

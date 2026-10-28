@@ -66,7 +66,7 @@ and a VML fallback); deduplication sends its text once.
 
 `PdfDocument` uses [PyMuPDF](https://pymupdf.readthedocs.io/). For each page,
 `get_text("dict")` gives blocks → lines → spans with their font, size, flags and
-colour. A block is one paragraph; adjacent spans with the same style are merged
+color. A block is one paragraph; adjacent spans with the same style are merged
 into one `PdfSpan` (a plain object with a `text` attribute, so it works as a run),
 and lines are joined with a space, rejoining words hyphenated at a line end.
 Rotated blocks are skipped.
@@ -77,8 +77,8 @@ Saving, page by page:
    removes the text under them while keeping images and line art
    (`PDF_REDACT_IMAGE_NONE`, `PDF_REDACT_LINE_ART_NONE`).
 2. `insert_htmlbox` lays out the translation as HTML, one `<span>` per run with
-   its size, weight, style and colour, CSS generic family, the measured line
-   spacing, and centring when the original lines were centred. It shrinks the text
+   its size, weight, style and color, CSS generic family, the measured line
+   spacing, and centering when the original lines were centered. It shrinks the text
    only if it can't fit (`scale_low=0`).
 3. `_layout_rect` first gives the text more room. It was measured before anything
    was removed: every text block and image is an obstacle and every drawn rectangle
@@ -113,7 +113,7 @@ slide with `…/relationships/diagramData`) and PowerPoint also caches the rende
 graphic, text included, in a *drawing* part (`…/2007/relationships/diagramDrawing`).
 Both are found through the slide's relationships, parsed with python-pptx's own
 `parse_xml` (so every `<a:p>` is a `CT_TextParagraph` and the normal `_Paragraph` /
-`_Run` text API works on them), translated like any other paragraph, and serialised
+`_Run` text API works on them), translated like any other paragraph, and serialized
 back into the part before saving (`_XmlBlob`). Translating the cached drawing too
 means the graphic shows the translation even before PowerPoint redraws it; since the
 two parts hold the same paragraphs, deduplication sends each one only once.
@@ -137,7 +137,7 @@ keeps the tags around the words they wrapped, even when it reorders them.
   into the slides.)
 
 HTML collapses whitespace, so each run's leading and trailing whitespace is cut
-off before sending and put back afterwards (`split_edges`), and tabs travel as
+off before sending and put back afterward (`split_edges`), and tabs travel as
 `<span class="tab"></span>`.
 
 Paragraphs with no letters (`needs_translation`) aren't sent at all: Google would
@@ -163,7 +163,7 @@ return them unchanged and still bill for them.
   that `_poll` runs on the GUI thread.
 - **The job** is a plain object with a blocking `run()` that returns a
   `JobResult`. It never raises: `CiceroError`s become `result.error` (their text is
-  written for the user) and anything else is logged and summarised.
+  written for the user) and anything else is logged and summarized.
 - **Stop** sets a `threading.Event`. The request already sent finishes (a gRPC call
   can't be withdrawn), then `OperationCancelled` unwinds the job before anything is
   saved.
@@ -179,7 +179,7 @@ return them unchanged and still bill for them.
   language boxes, without translating (and paying for) anything.
 - **Credentials** are scoped to `cloud-translation` only.
 - **Errors** from `google.api_core` and `google.auth` are turned into a
-  `TranslationError` by `describe_error`, which recognises the common setup
+  `TranslationError` by `describe_error`, which recognizes the common setup
   mistakes (API disabled, missing role, billing, revoked key, no network) and
   says how to fix each.
 - **Limits**: Google accepts up to 1024 strings per request and recommends under
