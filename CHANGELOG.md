@@ -25,6 +25,22 @@ All notable changes to this project are documented here. The format follows
 - Source-language detection for local models that need it (langdetect).
 - `docs/LOCAL_MODELS.md`: the architectures considered, the design, and results.
 
+### Changed
+
+- PDFs are read as paragraphs, not as PyMuPDF's blocks, which often hold a whole table row, a
+  label and its value, or a date next to a title. These used to be translated as one run-on
+  sentence and squeezed into one box; now each cell, label and value is translated and placed
+  on its own, and only lines that were wrapped are joined (also across blocks, as in widely
+  spaced paragraphs and list items).
+- Postal addresses in PDFs, and the names in them wherever they appear again, are left as they
+  are, and so is text that OCR software traced from a scanned letterhead (logos, footers).
+- Right-aligned lines in PDFs (headers, page numbers, column headings over numbers) stay
+  right-aligned and grow to the left; text no longer grows across ruled lines; one-line cells
+  keep their font size where there is no room to grow.
+- Paragraphs made only of e-mail or web addresses, phone numbers, IBANs or other codes are no
+  longer sent to the translator, in any kind of document.
+- Local models that read the whole document are told when a PDF paragraph is a table cell.
+
 ### Fixed
 
 - The standalone executable (`Cicero.exe`, including 2.1.0's) couldn't translate PDFs: PyMuPDF 2 loads

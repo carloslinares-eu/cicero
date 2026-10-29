@@ -246,23 +246,35 @@ spreadsheet has no page column; its *Location* says `Body`, `Body › Table`,
 ### PDFs
 
 A PDF has no paragraphs or text boxes, only letters placed on the page. Cicero
-reads the text in blocks (roughly paragraphs), translates each block, removes the
+works out the paragraphs from how the lines sit, translates each one, removes the
 original letters and writes the translation in the same place:
 
-- Font size, bold, italic and color are kept for each part of the block. The
+- Lines are joined into one paragraph only when the text was wrapped from one to
+  the next. Table cells, a label and its value, a date beside a title, and the lines
+  of an address each stay on their own, so a form or an invoice keeps its layout.
+- Font size, bold, italic and color are kept for each part of the paragraph. The
   typeface is replaced by a standard one of the same kind (sans-serif, serif or
   monospaced), because PDFs usually contain only the letters their text uses.
+- Left-, right- and center-aligned text keeps its alignment.
 - Pictures, drawings, lines, backgrounds and shaded boxes are not touched.
-- Longer translations first use the free space to the right of one-line text and
-  below every block, without running into other text, pictures or out of a box the
-  text sits in. Only if that isn't enough is the text made smaller. If it still
-  doesn't fit, the end message says how many paragraphs may be cut off.
+- Longer translations first use the free space beside one-line text (to the right,
+  or to the left of right-aligned text) and below every paragraph, without running
+  into other text, pictures, ruled lines or out of a box the text sits in. Only if
+  that isn't enough is the text made smaller. If it still doesn't fit, the end
+  message says how many paragraphs may be cut off.
 - Words hyphenated at the end of a line are joined before translating.
 
 What isn't translated:
 
+- **Postal addresses** (the lines that end in a postcode and town, and the name and
+  street above them), and the names in them wherever they appear again: an address
+  must stay valid, and names aren't translated.
+- E-mail and web addresses, phone numbers, IBANs and other codes on their own.
 - **Scanned PDFs** (pictures of pages) contain no text. Run them through OCR first,
   for example with Adobe Acrobat or [ocrmypdf](https://ocrmypdf.readthedocs.io/).
+- A scanned letterhead under a document (its logo and footer): OCR software sometimes
+  turns it into text drawn to look like the scan, which redrawn in another typeface
+  would no longer look like it.
 - Rotated or vertical text, text inside pictures, and form fields.
 - **Password-protected PDFs** can't be opened; remove the password first.
 

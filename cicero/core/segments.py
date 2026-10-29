@@ -20,11 +20,19 @@ from html.parser import HTMLParser
 
 _TAB_TAG = '<span class="tab"></span>'
 _EDGES = re.compile(r"^(\s*)(.*?)(\s*)$", re.DOTALL)
+_NOT_WORDS = re.compile(r"""
+    \S+@\S+\.\w+              # e-mail addresses
+  | (?:https?://|www\.)\S+    # web addresses
+  | \S*\d\S*                  # anything with a digit: numbers, dates, phone numbers, IBANs, codes
+""", re.VERBOSE)
 
 
 def needs_translation(text: str) -> bool:
-    """False for text with no letters at all (numbers, bullets, symbols): it would come back unchanged."""
-    return any(character.isalpha() for character in text)
+    """False for text with no words in it, only numbers, codes, symbols, e-mail or web addresses.
+
+    Such text would come back unchanged, at best.
+    """
+    return any(character.isalpha() for character in _NOT_WORDS.sub(" ", text))
 
 
 def split_edges(text: str) -> tuple[str, str, str]:

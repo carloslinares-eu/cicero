@@ -66,26 +66,58 @@ and a VML fallback); deduplication sends its text once.
 
 `PdfDocument` uses [PyMuPDF](https://pymupdf.readthedocs.io/). For each page,
 `get_text("dict")` gives blocks → lines → spans with their font, size, flags and
-color. A block is one paragraph; adjacent spans with the same style are merged
-into one `PdfSpan` (a plain object with a `text` attribute, so it works as a run),
-and lines are joined with a space, rejoining words hyphenated at a line end.
-Rotated blocks are skipped.
+color. PyMuPDF's blocks are not paragraphs: one often holds a table row, a label and
+its value, or a date and a title, while the lines of a widely spaced paragraph get a
+block each. So the page's lines are regrouped (`_paragraphs`):
+
+- Pieces of one row that PyMuPDF split with a small gap are merged back into a line.
+- A line joins the paragraph above it only if it sits right below it (at most 1.9
+  font sizes, spaced like the paragraph's other lines), lines up with it (left,
+  centered, under an indented first line or the text after a bullet), has the same
+  size and weight, doesn't start a list item, and the text was wrapped there
+  (`_wrapped`): a word broken with a hyphen, or the next line's first word wouldn't
+  have fitted before the right edge of the longest line that starts at the same place.
+  The line above needs a few words for that, unless the next line starts in lowercase
+  in the same PyMuPDF block. Text of 14 points or more (headings) joins without it.
+- Left out: rotated lines; blocks with unreadable characters (U+FFFD); and, on pages
+  that also have ordinary text, text in fonts that OCR software traced from a scan
+  (Acrobat's ClearScan names them with a leading `*`): there it is the scanned
+  letterhead under the document, logo and footer included.
+- `_addresses` finds postal addresses: a line ending in a postcode and town, with a
+  country code (`DE-86161`) or a house number (on that line or above it), and up to
+  four short lines just above it in the same column. They aren't translated, and
+  neither are the names in them (the address lines without digits) wherever they
+  appear again in the document, such as the policyholder in a form.
+
+Within a paragraph, adjacent spans with the same style are merged into one `PdfSpan`
+(a plain object with a `text` attribute, so it works as a run), and lines are joined
+with a space, rejoining words hyphenated at a line end. A single line that has
+another line of the same height level with it gets the location `Table cell`, which
+local models that read the whole document are told.
+
+Alignment (`_alignment`): a paragraph of lines of different widths is centered or
+right-aligned if they share their middle or right edge; a single line is right-aligned
+if it ends where a line near it ends without starting where any line near it starts
+(a header above a page number, a column heading above its numbers).
 
 Saving, page by page:
 
-1. A redaction annotation covers each translated block, and `apply_redactions`
-   removes the text under them while keeping images and line art
-   (`PDF_REDACT_IMAGE_NONE`, `PDF_REDACT_LINE_ART_NONE`).
+1. A redaction annotation covers the middle half of each translated line, and
+   `apply_redactions` removes the text under them while keeping images and line art
+   (`PDF_REDACT_IMAGE_NONE`, `PDF_REDACT_LINE_ART_NONE`). A redaction removes every
+   glyph it touches, so covering the whole line box could take letters from a line
+   above or below that stays.
 2. `insert_htmlbox` lays out the translation as HTML, one `<span>` per run with
    its size, weight, style and color, CSS generic family, the measured line
-   spacing, and centering when the original lines were centered. It shrinks the text
-   only if it can't fit (`scale_low=0`).
+   spacing (for a single line, no more than the original line's height), and the
+   alignment. It shrinks the text only if it can't fit (`scale_low=0`).
 3. `_layout_rect` first gives the text more room. It was measured before anything
-   was removed: every text block and image is an obstacle and every drawn rectangle
-   a possible frame. The box grows down, and right for a single left-aligned line,
-   up to the nearest obstacle, the frame it sits in or the page margin.
+   was removed: every line of text, image and ruled line is an obstacle and every
+   drawn rectangle a possible frame. The box grows down, and for a single line right
+   (left when right-aligned), up to the nearest obstacle, the frame it sits in or the
+   page margin.
 
-Blocks that didn't fit even when shrunk are counted into `JobResult.warnings`.
+Paragraphs that didn't fit even when shrunk are counted into `JobResult.warnings`.
 
 ## From slide to translation and back
 

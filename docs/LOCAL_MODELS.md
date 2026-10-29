@@ -169,6 +169,22 @@ All three put the speaker note "Thank everyone for coming and mention that…" i
 person, as if it were the presenter's script; telling Qwen the text is a speaker note
 didn't change that. It is a defensible reading, so it was left alone.
 
+A two-page German insurance invoice (a PDF: a form of labels and values, a table, an
+address, a scanned letterhead), German to Bulgarian. Hy-MT2 has no Bulgarian.
+
+| Model             | 54 paragraphs and cells                 |
+|-------------------|-----------------------------------------|
+| TranslateGemma 4B | 10 s                                    |
+| Qwen 3.5 9B       | 36 s, including reading the document    |
+
+Terse labels are where context matters most. Seen on its own, *Prämienrechnung*
+(premium invoice) became `Фактура за награди` ("invoice for awards") with TranslateGemma,
+*Versicherungsnehmer* (policyholder) became `Застраховател` ("insurer") and *Nettobetrag*
+`Сума след данъци` ("amount after tax"). Qwen, with its summary and glossary, got most labels
+right (`Нетна сума`, `Премия`, `Валута`, `Референция на мандата`), but still read the table
+heading *Art* (type) as `Изкуство` ("art") and *Vers.St.* (insurance tax) as `Версия Ст.`.
+For forms and invoices, prefer a model that reads the whole document, or DeepL.
+
 The same check on GitHub Actions' Debian 12 and Fedora containers (no graphics card):
 Cicero downloads its own Ollama, TranslateGemma 4B, and translates the presentation on
 the processor.

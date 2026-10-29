@@ -25,8 +25,9 @@ changed.
   masters and layouts.
 - **Word documents too.** Body text, tables (including tables in tables), text
   boxes, headers, footers, footnotes, endnotes and comments.
-- **PDFs too.** Text is replaced where it stands, in the same font size, weight
-  and color; pictures, drawings and backgrounds stay untouched.
+- **PDFs too.** Text is replaced where it stands, paragraph by paragraph and cell by
+  cell, in the same font size, weight, color and alignment; pictures, drawings,
+  backgrounds and postal addresses stay untouched.
 - **Repeated text is translated once.** A footer on every slide is sent to Google
   (and billed) only once.
 - **Three ways to translate.** Google Cloud Translation (about 190 languages),
@@ -133,7 +134,7 @@ what is and isn't translated, and troubleshooting.
 
 | Step           | What happens                                                                                                                                                                                                                                                   |
 |----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1. Reading     | The file is searched for paragraphs with letters in them: on slides, shapes (including inside groups), table cells, SmartArt and notes; in Word, the body, tables, text boxes, headers, footers and notes; in a PDF, each block of text.                       |
+| 1. Reading     | The file is searched for paragraphs with letters in them: on slides, shapes (including inside groups), table cells, SmartArt and notes; in Word, the body, tables, text boxes, headers, footers and notes; in a PDF, each paragraph, cell and label.           |
 | 2. Packing     | Each paragraph's runs are wrapped in numbered `<span>` tags, so the translator sees one sentence but knows which words belonged to which run.                                                                                                                  |
 | 3. Translating | Each distinct paragraph is sent once, in batches (Google Cloud Translation v3: up to 100 paragraphs; DeepL: up to 50), with HTML tag handling so the run markers survive. Local models get one paragraph at a time, with the context they were trained to use. |
 | 4. Saving      | Each translation is split back into its runs, keeping their formatting (in a PDF, the original text is removed and the translation laid out in its place), and the copy is saved through a temporary file.                                                     |

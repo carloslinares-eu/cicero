@@ -86,3 +86,82 @@ def test_longer_translations_use_free_space_instead_of_shrinking(fake_translator
     assert round(found["Hire two engineers (traducido)"]["size"]) == 10
     assert all(frame.contains(pymupdf.Rect(span["bbox"])) for span in found.values())
     assert result.warnings == []
+
+
+def test_form_rows_dates_and_addresses_stay_apart(fake_translator, tmp_path):
+    source = tmp_path / "invoice.pdf"
+    pdf = pymupdf.open()
+    page = pdf.new_page(width=595, height=842)
+    page.insert_text((60, 120), "Acme GmbH - Hauptstr. 5 - 50968 Köln", fontsize=6)
+    for row, text in enumerate(("Erika Mustermann", "Musterweg 12", "DE-80331 München")):
+        page.insert_text((60, 134 + 13 * row), text, fontsize=11)
+    page.insert_text((420, 200), "29 February 2024", fontsize=9)
+    page.insert_text((60, 212), "Premium invoice", fontname="hebo", fontsize=12)
+    rows = (("Contract type", "company car"), ("Risk", "see attachment"), ("Policy number", "see attachment"),
+            ("Policyholder", "Erika Mustermann"), ("Contact", "service@example.com"))
+    for row, (label, value) in enumerate(rows):
+        page.insert_text((70, 260 + 17 * row), label, fontsize=10)
+        page.insert_text((180, 260 + 17 * row), value, fontsize=10)
+    pdf.save(source)
+
+    originals = [block.original for block in open_document(source).blocks]
+    assert originals == ["29 February 2024", "Premium invoice", "Contract type", "company car", "Risk",
+                         "see attachment", "Policy number", "see attachment", "Policyholder", "Contact"]
+
+    _, output = translate(fake_translator, source)
+    found = {span["text"].strip(): span for span in spans(output[0])}
+    for kept in ("Acme GmbH - Hauptstr. 5 - 50968 Köln", "Erika Mustermann", "Musterweg 12", "DE-80331 München",
+                 "service@example.com"):
+        assert kept in found, kept
+    assert abs(found["COMPANY CAR"]["bbox"][0] - 180) < 2  # still in the value column
+    assert abs(found["29 FEBRUARY 2024"]["bbox"][0] - 420) < 2 and round(found["CONTRACT TYPE"]["size"]) == 10
+
+
+def test_wrapped_paragraphs_and_list_items_are_whole(sample_pdf, tmp_path):
+    source = tmp_path / "prose.pdf"
+    pdf = pymupdf.open()
+    pdf.new_page().insert_htmlbox(pymupdf.Rect(50, 50, 300, 800), """
+        <p style="line-height:1.6">A paragraph with wide line spacing, as Word sets it with 1.5 lines, which runs
+        over several lines of this narrow column.</p>
+        <ul><li>Revenue grew eighteen percent year over year, driven by the new subscriptions.</li>
+        <li>Churn fell.</li></ul>""", css="* {font-family: sans-serif; font-size: 10pt}")
+    pdf.save(source)
+    originals = [" ".join(block.original.split()) for block in open_document(source).blocks]
+    assert originals == [
+        "A paragraph with wide line spacing, as Word sets it with 1.5 lines, which runs over several lines of this "
+        "narrow column.",
+        "• Revenue grew eighteen percent year over year, driven by the new subscriptions.",
+        "• Churn fell.",
+    ]
+
+
+def test_text_traced_from_a_scan_is_left_alone_beside_ordinary_text(fake_translator, tmp_path):
+    source = tmp_path / "letterhead.pdf"
+    pdf = pymupdf.open()
+    pdf.new_page().insert_text((72, 72), "Letterhead Company", fontname="cour")  # the scanned stationery
+    pdf[0].insert_text((72, 120), "Invoice for March", fontname="helv")
+    pdf.new_page().insert_text((72, 72), "A scanned page", fontname="cour")  # nothing else: translated
+    traced = next(font[0] for font in pdf[0].get_fonts() if font[3] == "Courier")
+    pdf.xref_set_key(traced, "BaseFont", "/*Courier-1970")  # how Acrobat's ClearScan names its fonts
+    pdf.save(source)
+
+    _, output = translate(fake_translator, source)
+    assert "Letterhead Company" in output[0].get_text() and "INVOICE FOR MARCH" in output[0].get_text()
+    assert "A SCANNED PAGE" in output[1].get_text()
+
+
+def test_right_aligned_lines_grow_to_the_left(fake_translator, tmp_path):
+    source = tmp_path / "header.pdf"
+    pdf = pymupdf.open()
+    page = pdf.new_page(width=595, height=842)
+    for y, text in ((60, "Appendix to the invoice"), (72, "Page 2 of 2")):
+        page.insert_text((540 - pymupdf.get_text_length(text, fontsize=10), y), text, fontsize=10)
+    pdf.save(source)
+
+    fake_translator.translate = lambda segments, _target, _source=None: [
+        segment.replace("Appendix to the invoice", "Anexo a la factura correspondiente").replace("Page", "Página")
+        for segment in segments]
+    _, output = translate(fake_translator, source)
+    for text in ("Anexo a la factura correspondiente", "Página 2 of 2"):
+        span = next(span for span in spans(output[0]) if span["text"].strip() == text)
+        assert abs(span["bbox"][2] - 540) < 2 and round(span["size"]) == 10, text
