@@ -4,7 +4,11 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.2.0] - 2026-10-31
+
+Local models join Google Cloud Translation and DeepL: open translation models that Cicero downloads
+and runs on your own computer. PDFs are read as paragraphs, cells and labels, and the executable
+translates PDFs again.
 
 ### Added
 
