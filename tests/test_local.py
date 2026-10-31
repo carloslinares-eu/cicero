@@ -6,6 +6,7 @@ import hashlib
 import io
 import sys
 import threading
+import time
 import zipfile
 from pathlib import Path
 
@@ -343,6 +344,48 @@ def test_an_ollama_the_user_runs_is_used_as_is(ollama, tmp_path):
     assert not runtime.owns_server
     runtime.stop()  # must not touch someone else's server
     assert OllamaClient(ollama.url).is_up()
+
+
+FAKE_SERVE = '''
+import http.server, json, os
+
+host, port = os.environ["OLLAMA_HOST"].rsplit(":", 1)
+
+
+class Version(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        body = json.dumps({"version": "0.0.0"}).encode()
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass
+
+
+http.server.HTTPServer((host, int(port)), Version).serve_forever()
+'''
+
+
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="the parent-death signal is Linux's")
+def test_the_engine_outlives_the_thread_that_started_it(tmp_path):
+    # The window starts the engine from its Connect or Download thread, which ends right after.
+    engine = tmp_path / "ollama" / "v-test" / "ollama"
+    engine.parent.mkdir(parents=True)
+    engine.write_text(f"#!{sys.executable}\n{FAKE_SERVE}")
+    engine.chmod(0o755)
+    runtime = OllamaRuntime(tmp_path, release="v-test", external_url=None)
+    clients: list[OllamaClient] = []
+    worker = threading.Thread(target=lambda: clients.append(runtime.client()))
+    worker.start()
+    worker.join()
+    time.sleep(1)  # the kernel's signal, if any, arrives as the thread ends
+    try:
+        assert runtime.owns_server and clients[0].is_up()
+    finally:
+        runtime.stop()
+    assert not runtime.owns_server
 
 
 def test_missing_engine_is_explained(tmp_path, monkeypatch):

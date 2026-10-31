@@ -18,6 +18,7 @@ import hashlib
 import logging
 import os
 import platform
+import queue
 import shutil
 import socket
 import subprocess
@@ -250,9 +251,10 @@ class OllamaRuntime:
         flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0  # type: ignore[attr-defined]
         log.info("Starting %s serve on %s", executable, url)
         try:
-            process = subprocess.Popen([str(executable), "serve"], env=env, stdout=log_file, stderr=subprocess.STDOUT,
-                                       stdin=subprocess.DEVNULL, creationflags=flags, cwd=str(executable.parent),
-                                       preexec_fn=_die_with_parent if sys.platform.startswith("linux") else None)
+            process = _start_in_own_thread(
+                [str(executable), "serve"], env=env, stdout=log_file, stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL, creationflags=flags, cwd=str(executable.parent),
+                preexec_fn=_die_with_parent if sys.platform.startswith("linux") else None)
         except OSError as exc:
             log_file.close()
             raise EngineError(f"Can't start the local model engine:\n{executable}\n\n{exc}") from exc
@@ -461,6 +463,32 @@ def _extract_zst(archive: Path, target: Path) -> None:
                                      capture_output=True).returncode != 0:
         raise EngineError("Unpacking the engine needs zstd. Install it (Debian/Ubuntu: sudo apt install zstd, "
                           "Fedora: sudo dnf install zstd) and try again.")
+
+
+def _start_in_own_thread(args: list[str], **options) -> subprocess.Popen:
+    """Start a process from a thread of its own, which lives exactly as long as the process does.
+
+    On Linux the server is told to stop when its parent dies (``_die_with_parent``), and for the
+    kernel the parent is the *thread* that started it, not Cicero as a whole. Started from the
+    window's Connect or Download thread, the server was stopped as soon as that thread finished,
+    and the next request found nothing listening.
+    """
+    started: queue.Queue[subprocess.Popen | OSError] = queue.Queue(maxsize=1)
+
+    def run() -> None:
+        try:
+            process = subprocess.Popen(args, **options)
+        except OSError as exc:
+            started.put(exc)
+            return
+        started.put(process)
+        process.wait()
+
+    threading.Thread(target=run, name="ollama-server", daemon=True).start()
+    result = started.get()
+    if isinstance(result, OSError):
+        raise result
+    return result
 
 
 def _die_with_parent() -> None:
