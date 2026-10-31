@@ -197,6 +197,18 @@ slower still, perhaps two to four times.
 | TranslateGemma 4B | 60 s                | 108 s                           | 2.9 GB         |
 | Qwen 3.5 4B       | 118 s               | 375 s, including reading it     | 3.4 GB         |
 
+On a real one, a 2015 ThinkPad X1 Carbon (Core i7-5600U, 2 cores and 4 threads, 8 GB,
+Intel HD 5500 graphics that Ollama doesn't use) with Debian 13: TranslateGemma 4B
+connected in 7–11 s and translated the 16 slide paragraphs in 122 s (7.6 s each), using
+2.9 GB of memory, all on the processor.
+
+That laptop also showed a bug that no test had: on Linux, Cicero asks the kernel to stop
+its engine when Cicero ends (`PR_SET_PDEATHSIG`), and the kernel takes the *thread* that
+started the engine as its parent. The window starts it from its Connect or Download
+thread, so the engine was stopped as soon as that thread finished, and translating failed
+with "Can't reach the local model server". The engine is now started from a thread of its
+own that lives as long as the engine does.
+
 Qwen 3.5 4B was tried as a small model that reads the whole document first, and left
 out. Its long prompts (summary, glossary, earlier paragraphs) are slow to read on a
 processor. Its Spanish was about as good as TranslateGemma's, and it kept the company
