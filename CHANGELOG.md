@@ -4,6 +4,53 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Local models**: translate with an open model on your own computer, as a third
+  service next to Google Cloud Translation and DeepL. Choose a model, click
+  **Download**, and Cicero fetches and runs everything by itself: it downloads the
+  Ollama engine once (checked against its published checksum), runs it hidden on a
+  private port, and stops it when Cicero closes. A green ✔ Ready shows which models
+  are downloaded; **Remove…** frees the space again. An Ollama you already run is
+  used as is, and models are shared with it.
+- Four models for 8 and 16 GB graphics cards: TranslateGemma 4B and 12B (Google),
+  Hy-MT2 7B (Tencent) and Qwen 3.5 9B (Alibaba). The window says whether each one
+  fits your graphics card.
+- Context-aware translation with local models: each model gets the prompt it was
+  trained on; Hy-MT2 also gets the earlier paragraphs of the slide or page, and Qwen
+  3.5 first reads the whole document and writes a summary and a glossary that every
+  paragraph is translated with.
+- Source-language detection for local models that need it (langdetect).
+- `docs/LOCAL_MODELS.md`: the architectures considered, the design, and results.
+
+### Changed
+
+- PDFs are read as paragraphs, not as PyMuPDF's blocks, which often hold a whole table row, a
+  label and its value, or a date next to a title. These used to be translated as one run-on
+  sentence and squeezed into one box; now each cell, label and value is translated and placed
+  on its own, and only lines that were wrapped are joined (also across blocks, as in widely
+  spaced paragraphs and list items).
+- Postal addresses in PDFs, and the names in them wherever they appear again, are left as they
+  are, and so is text that OCR software traced from a scanned letterhead (logos, footers).
+- Right-aligned lines in PDFs (headers, page numbers, column headings over numbers) stay
+  right-aligned and grow to the left; text no longer grows across ruled lines; one-line cells
+  keep their font size where there is no room to grow.
+- Paragraphs made only of e-mail or web addresses, phone numbers, IBANs or other codes are no
+  longer sent to the translator, in any kind of document.
+- Local models that read the whole document are told when a PDF paragraph is a table cell.
+- On computers whose graphics card is too small for a local model, or that have none, the window
+  weighs the model against the computer's main memory and says when it is too large, instead of
+  only naming the graphics memory it would like.
+
+### Fixed
+
+- The standalone executable (`Cicero.exe`, including 2.1.0's) couldn't translate PDFs: PyMuPDF 2 loads
+  its optional layout analyzer whenever it is installed, and the executable bundled it without its data
+  files. Cicero doesn't use it, so the build now leaves it (and the ONNX runtime) out, which also makes
+  the executable 14 MB smaller. Running Cicero from Python wasn't affected.
+
 ## [2.1.0] - 2026-10-25
 
 Word documents, PDFs and DeepL join PowerPoint and Google Cloud Translation, along with SmartArt,
@@ -27,7 +74,7 @@ slide masters, a status bar and a new icon.
   headers, footers, footnotes, endnotes and comments, keeping run formatting,
   links and line breaks. ([#11](https://github.com/carloslinares-eu/cicero/issues/11))
 - PDF files: each block of text is replaced in place with its translation,
-  keeping font size, weight, style and colour, and leaving pictures and drawings
+  keeping font size, weight, style and color, and leaving pictures and drawings
   untouched. Longer translations use the free space around them before being
   shrunk. Scanned and password-protected PDFs are explained.
   ([#19](https://github.com/carloslinares-eu/cicero/issues/19))
@@ -90,7 +137,7 @@ A rewrite on current libraries. The `cicero` package keeps its name but every mo
 
 - The PDF option. It was listed in the file dialog but never implemented.
 - `setup.py` (its `install_requires` named packages that don't exist on PyPI,
-  so it couldn't be installed) in favour of `pyproject.toml`.
+  so it couldn't be installed) in favor of `pyproject.toml`.
 
 ### Fixed
 
@@ -103,7 +150,7 @@ A rewrite on current libraries. The `cicero` package keeps its name but every mo
   `haw`, `ceb` and others; the source language choice was ignored.
 - Batches could exceed Google's request limits on large presentations.
 - Opening every slide's notes created empty notes pages in the output.
-- Cancelling the file dialog crashed the app; the opened file handle was never closed.
+- Canceling the file dialog crashed the app; the opened file handle was never closed.
 - The icon was looked up relative to the current folder, so the app wouldn't
   start from anywhere else, and `.ico` icons failed on Linux and macOS.
 

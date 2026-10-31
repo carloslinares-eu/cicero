@@ -51,6 +51,7 @@ def test_locations_and_review_without_page_column(fake_translator, sample_docx):
     assert locations == {"Body", "Body › Table", "Header", "Footer"}
 
     result, _ = translate(fake_translator, sample_docx, write_review=True)
+    assert result.review_path is not None
     with open(result.review_path, encoding="utf-8-sig", newline="") as file:
         rows = list(csv.reader(file))
     assert rows[0] == ["Location", "Original", "Translation"]
@@ -61,4 +62,4 @@ def test_unsupported_files_are_explained(fake_translator, tmp_path):
     source = tmp_path / "notes.odt"
     source.write_text("x")
     result = TranslationJob(fake_translator, JobOptions(source, tmp_path / "out.odt", "es")).run()
-    assert "can't translate .odt files" in result.error
+    assert result.error is not None and "can't translate .odt files" in result.error

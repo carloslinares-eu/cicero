@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
+import threading
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 import google.api_core.exceptions as api_exceptions
 import google.auth.exceptions
@@ -34,6 +35,23 @@ class Language:
     @property
     def label(self) -> str:
         return f"{self.name} ({self.code})"
+
+
+@dataclass(frozen=True, slots=True)
+class SegmentInfo:
+    """A paragraph to translate and where it first appears, for translators that use the context."""
+
+    html: str  # as sent to translate()
+    page: int  # slide or page number (0 for masters, and for Word documents)
+    location: str  # e.g. "Title 1", "Notes", "Body › Table"
+
+
+@runtime_checkable
+class ContextualTranslator(Protocol):
+    """A translator that looks at the whole document first (local models). Google and DeepL aren't."""
+
+    def prepare(self, segments: Sequence[SegmentInfo], target: str, source: str | None, *,
+                cancel: threading.Event | None = None, unit: str | None = "slide") -> None: ...
 
 
 class Translator(Protocol):
@@ -70,7 +88,7 @@ class GoogleTranslator:
         return f"project “{self.account.project_id}”"
 
     def languages(self, display_language: str = "en") -> list[Language]:
-        """Every supported language, sorted by name. Also a cheap way to check the credentials work."""
+        """Every supported language, sorted by name. It is also a cheap way to check the credentials work."""
         with _friendly_errors(self.account.project_id):
             response = self._client.get_supported_languages(
                 parent=self.parent, display_language_code=display_language, timeout=REQUEST_TIMEOUT)

@@ -17,7 +17,8 @@ from lxml import etree
 from cicero.core.blocks import TextBlock, make_block, save_atomically
 from cicero.core.errors import DocumentError
 
-W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+# noinspection HttpUrlsUsage
+W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"  # XML namespaces must be written exactly so
 # Runs directly in the paragraph, inside links, tracked insertions and smart tags. Deleted
 # text (w:del) is left alone, and so are field codes, which aren't in w:t elements.
 RUNS_XPATH = " | ".join(["./w:r", "./w:hyperlink/w:r", "./w:ins/w:r", "./w:smartTag/w:r", "./w:customXml/w:r",
@@ -54,13 +55,15 @@ class DocxDocument:
         for name, story in self._iter_stories():
             for paragraph in story.iter(f"{W}p"):
                 runs = [Run(r, None) for r in paragraph.xpath(RUNS_XPATH)]
+                # noinspection PyProtectedMember
                 safe = [run for run in runs if not any(child.tag in UNSAFE_RUN_CONTENT for child in run._r)]
                 block = make_block(0, _location(name, paragraph), safe, "".join(run.text for run in runs))
                 if block is not None:
                     blocks.append(block)
         return blocks
 
-    def _iter_stories(self) -> Iterator[tuple[str, etree._Element]]:
+    # noinspection PyProtectedMember
+    def _iter_stories(self) -> Iterator[tuple[str, etree._Element]]:  # lxml's element type is named _Element
         yield "Body", self.document.element.body
         seen: set[str] = set()
         for reltype, name in STORY_PARTS:
@@ -76,6 +79,7 @@ class DocxDocument:
                 yield name, story.element
 
 
+# noinspection PyProtectedMember
 def _location(story: str, paragraph: etree._Element) -> str:
     """"Body", "Body › Table", "Header › Text box"…"""
     for ancestor in paragraph.iterancestors():

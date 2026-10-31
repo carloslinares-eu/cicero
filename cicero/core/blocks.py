@@ -37,9 +37,12 @@ class Document(Protocol):
 
     kind: str  # for messages: "presentation", "Word document", …
     unit: str | None  # what ``TextBlock.page`` counts ("slide", "page"), or None if nothing
-    page_count: int
     blocks: list[TextBlock]
     warnings: list[str]  # problems found while saving that didn't stop it
+
+    @property
+    def page_count(self) -> int:
+        """Slides or pages (0 when the format has none)."""
 
     def save(self, path: str | Path) -> None: ...
 

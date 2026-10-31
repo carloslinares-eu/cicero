@@ -47,6 +47,10 @@ def test_needs_translation():
     assert needs_translation("日本語")
     assert not needs_translation("2024 – 42 %")
     assert not needs_translation("•")
+    assert needs_translation("Invoice no. 2024/000252917")
+    for text in ("service@example.com", "www.example.com/help", "+49 (0)221 650744-02", "DE89 3704 0044 0532 0130 00",
+                 "HE/2023/120734", "01.03.2024-01.04.2024", "Q3"):
+        assert not needs_translation(text), text
 
 
 def test_line_breaks_survive_and_source_newlines_are_whitespace():

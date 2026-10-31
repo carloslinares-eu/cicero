@@ -23,9 +23,10 @@ dist/
 # Left behind only if Cicero is killed while saving
 *.cicero-partial
 
-# IDE: personal settings (the rest of .idea/ can be shared)
-.idea/workspace.xml
-.idea/shelf/
+# IDE settings and exported inspection results stay local
+.idea/
+.problems/
+inspections/
 .vscode/
 
 # OS clutter

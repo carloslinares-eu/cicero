@@ -13,7 +13,14 @@ from cicero.core.errors import CiceroError, OperationCancelled
 from cicero.core.blocks import apply
 from cicero.core.documents import open_document
 from cicero.core.review import review_path_for, write_review
-from cicero.core.translator import MAX_CHARACTERS_PER_REQUEST, MAX_SEGMENTS_PER_REQUEST, Translator, batches
+from cicero.core.translator import (
+    MAX_CHARACTERS_PER_REQUEST,
+    MAX_SEGMENTS_PER_REQUEST,
+    ContextualTranslator,
+    SegmentInfo,
+    Translator,
+    batches,
+)
 
 log = logging.getLogger(__name__)
 
@@ -21,9 +28,15 @@ log = logging.getLogger(__name__)
 class Phase(enum.Enum):
     IDLE = "Ready"
     READING = "Reading the presentation"
+    PREPARING = "Reading the whole document"  # translators that use context look at everything first
     TRANSLATING = "Translating"
     SAVING = "Saving"
     FINISHED = "Finished"
+
+    @property
+    def text(self) -> str:
+        """What the window shows while the job is in this phase."""
+        return str(self.value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,7 +44,7 @@ class JobOptions:
     input_path: Path
     output_path: Path
     target_language: str
-    source_language: str | None = None  # None: let Google detect it
+    source_language: str | None = None  # None: let the translation service detect it
     write_review: bool = False
     include_masters: bool = False  # also translate slide masters and layouts
 
@@ -157,6 +170,14 @@ class TranslationJob:
             owners.setdefault(block.source_html, []).append(index)
         segments = list(owners)
         total = sum(len(segment) for segment in segments)
+        if isinstance(self.translator, ContextualTranslator) and segments:
+            self._set_progress(Phase.PREPARING, characters_total=total, paragraphs_total=len(blocks),
+                               pages_total=result.pages, unit=result.unit)
+            first = [blocks[owners[segment][0]] for segment in segments]
+            infos = [SegmentInfo(segment, block.page, block.location) for segment, block in zip(segments, first)]
+            self.translator.prepare(infos, options.target_language, options.source_language, cancel=self._cancel,
+                                    unit=document.unit)
+            self._check_cancelled()
         done = paragraphs_done = 0
         self._set_progress(Phase.TRANSLATING, characters_total=total, paragraphs_total=len(blocks),
                            pages_total=result.pages, unit=result.unit)
@@ -180,6 +201,7 @@ class TranslationJob:
         document.save(options.output_path)
         result.output_path = options.output_path
         result.warnings.extend(document.warnings)
+        result.warnings.extend(getattr(self.translator, "warnings", []))
         if options.write_review:
             review = review_path_for(options.output_path)
             try:

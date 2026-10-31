@@ -26,7 +26,7 @@ WHITE_SHADE = (214, 214, 222)
 INK = (58, 34, 40)
 ICO_SIZES = [16, 20, 24, 32, 40, 48, 64, 96, 128, 256]
 
-HEAD = (512, 420)  # centre of the face
+HEAD = (512, 420)  # center of the face
 FACE_SIZE = (330, 400)
 
 

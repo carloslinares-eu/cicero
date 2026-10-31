@@ -24,13 +24,16 @@ def settings_path() -> Path:
 
 @dataclass(slots=True)
 class Settings:
-    engine: str = "google"  # "google" or "deepl"
+    engine: str = "google"  # "google", "deepl" or "local"
     key_file: str = ""  # path to the Google service account key; empty means Application Default Credentials
     source_language: str = ""  # Google language codes; empty means detect automatically
     target_language: str = ""
     deepl_source_language: str = ""  # DeepL uses its own codes (EN-GB, PT-BR…)
     deepl_target_language: str = ""
     remember_deepl_key: bool = True  # in the system credential store, see secrets.py
+    local_model: str = ""  # a key of cicero.core.local.catalog
+    local_source_language: str = ""  # local models use Cicero's own codes (pt-BR, zh-Hans…)
+    local_target_language: str = ""
     write_review: bool = False
     include_masters: bool = False
     last_folder: str = ""
@@ -39,11 +42,15 @@ class Settings:
         """The (source, target) codes last used with ``engine``."""
         if engine == "deepl":
             return self.deepl_source_language, self.deepl_target_language
+        if engine == "local":
+            return self.local_source_language, self.local_target_language
         return self.source_language, self.target_language
 
     def set_languages(self, engine: str, source: str, target: str) -> None:
         if engine == "deepl":
             self.deepl_source_language, self.deepl_target_language = source, target
+        elif engine == "local":
+            self.local_source_language, self.local_target_language = source, target
         else:
             self.source_language, self.target_language = source, target
 

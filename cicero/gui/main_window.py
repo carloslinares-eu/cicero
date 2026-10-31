@@ -17,8 +17,13 @@ from cicero import __app_name__, __version__
 from cicero.core.credentials import CloudAccount, load_default, load_key_file
 from cicero.core.deepl_engine import DeepLTranslator
 from cicero.core.documents import SUPPORTED, is_supported
-from cicero.core.errors import CiceroError
+from cicero.core.errors import CiceroError, OperationCancelled
 from cicero.core.job import JobOptions, JobResult, Phase, Progress, TranslationJob
+from cicero.core.local import catalog
+from cicero.core.local.hardware import detect_gpu, fit_note, system_memory_gb
+from cicero.core.local.ollama import PullProgress
+from cicero.core.local.runtime import DownloadProgress, EngineRuntime, OllamaRuntime
+from cicero.core.local.translator import LocalTranslator
 from cicero.core.secrets import load_deepl_key, save_deepl_key
 from cicero.core.settings import Settings
 from cicero.core.translator import GoogleTranslator, Language, Translator
@@ -32,15 +37,21 @@ MUTED = "#5F5F5F"
 TAGLINE = "Translates presentations, Word documents and PDFs, keeping their layout and formatting."
 AUTOMATIC = "Detect automatically"
 KEY_FILE_TYPES = [("Google Cloud key file", "*.json"), ("All files", "*.*")]
-ENGINES = {"google": "Google Cloud Translation", "deepl": "DeepL"}
+ENGINES = {"google": "Google Cloud Translation", "deepl": "DeepL", "local": "Local model (on this computer)"}
+READY_GREEN = "dark green"
 DOCUMENT_TYPES = [("Presentations, Word documents and PDFs", " ".join(f"*{ext}" for ext in SUPPORTED))]
 DOCUMENT_TYPES += [(name, f"*{ext}") for ext, name in SUPPORTED.items()]
 
 
 class MainWindow:
-    def __init__(self, root: tk.Tk | tk.Toplevel, settings: Settings | None = None, autoconnect: bool = True) -> None:
+    def __init__(self, root: tk.Tk | tk.Toplevel, settings: Settings | None = None, autoconnect: bool = True,
+                 runtime: EngineRuntime | None = None) -> None:
         self.root = root
         self.settings = settings or Settings.load()
+        self.runtime: EngineRuntime = runtime or OllamaRuntime()
+        self.local_model = catalog.get(self.settings.local_model)
+        self._download_cancel: threading.Event | None = None
+        self._download_progress: PullProgress | DownloadProgress | None = None  # written by the download thread
         self.translator: Translator | None = None
         self.engine = self.settings.engine if self.settings.engine in ENGINES else "google"
         self.job: TranslationJob | None = None
@@ -52,6 +63,9 @@ class MainWindow:
         self.engine_name = tk.StringVar(value=ENGINES[self.engine])
         self.deepl_key = tk.StringVar(value=load_deepl_key() if self.settings.remember_deepl_key else "")
         self.remember_deepl_key = tk.BooleanVar(value=self.settings.remember_deepl_key)
+        self.local_model_name = tk.StringVar(value=self.local_model.label())
+        self.local_status = tk.StringVar()
+        self.local_note = tk.StringVar()
         self.input_path = tk.StringVar()
         self.output_path = tk.StringVar()
         self.write_review = tk.BooleanVar(value=self.settings.write_review)
@@ -95,9 +109,23 @@ class MainWindow:
         self.deepl_label = ttk.Label(service, text="Auth key")
         self.deepl_entry = ttk.Entry(service, textvariable=self.deepl_key, show="•")
         self.remember_check = ttk.Checkbutton(service, text="Remember", variable=self.remember_deepl_key)
+        # Local: an open-weight model, downloaded once and run by Cicero's private Ollama server.
+        self.local_label = ttk.Label(service, text="Model")
+        self.local_frame = ttk.Frame(service)
+        self.local_frame.columnconfigure(1, weight=1)
+        self.model_box = ttk.Combobox(self.local_frame, textvariable=self.local_model_name, state="readonly", width=40,
+                                      values=[model.label() for model in catalog.CATALOG])
+        self.model_box.grid(row=0, column=0, sticky="w")
+        self.model_box.bind("<<ComboboxSelected>>", lambda _e: self._on_local_model_changed())
+        self.local_status_label = ttk.Label(self.local_frame, textvariable=self.local_status)
+        self.local_status_label.grid(row=0, column=1, sticky="w", padx=(10, 0))
+        self.download_button = ttk.Button(service, text="Download", command=self._download_or_remove)
+        ttk.Label(self.local_frame, textvariable=self.local_note, foreground=MUTED, wraplength=520).grid(
+            row=1, column=0, columnspan=2, sticky="w", pady=(4, 0))
         self._service_rows = {
             "google": [(self.google_label, 0), (self.key_entry, 1), (self.key_browse, 2)],
             "deepl": [(self.deepl_label, 0), (self.deepl_entry, 1), (self.remember_check, 2)],
+            "local": [(self.local_label, 0), (self.local_frame, 1), (self.download_button, 2)],
         }
         self._show_service_row()
 
@@ -190,11 +218,16 @@ class MainWindow:
         ready = connected and bool(self.input_path.get().strip()) and bool(self.output_path.get().strip())
         self.translate_button.state(["!disabled"] if ready and not running else ["disabled"])
         self.stop_button.state(["!disabled"] if running else ["disabled"])
-        for widget in (self.key_entry, self.key_browse, self.deepl_entry, self.remember_check, self.connect_button,
+        downloading = self._download_cancel is not None
+        for widget in (self.key_entry, self.key_browse, self.deepl_entry, self.remember_check,
                        self.input_entry, self.input_browse, self.output_entry, self.output_browse, self.source_box,
                        self.target_box, self.review_check):
             widget.state(["disabled"] if running else ["!disabled"])
-        self.engine_box.state(["disabled"] if running else ["!disabled", "readonly"])
+        busy = running or downloading
+        self.connect_button.state(["disabled"] if busy else ["!disabled"])
+        self.engine_box.state(["disabled"] if busy else ["!disabled", "readonly"])
+        self.model_box.state(["disabled"] if busy else ["!disabled", "readonly"])
+        self.download_button.state(["disabled"] if running else ["!disabled"])
         is_presentation = self._input_suffix() in ("", ".pptx")  # masters only exist in presentations
         self.masters_check.state(["!disabled"] if is_presentation and not running else ["disabled"])
 
@@ -204,12 +237,16 @@ class MainWindow:
         for engine, widgets in self._service_rows.items():
             for widget, column in widgets:
                 if engine == self.engine:
-                    widget.grid(row=1, column=column, sticky="ew" if column == 1 else "w",
+                    widget.grid(row=1, column=column, sticky=("ew" if column == 1 else "w") + "n",
                                 padx=(0, 8) if column == 0 else (8, 0) if column == 2 else 0, pady=(8, 0))
                 else:
                     widget.grid_remove()
 
     def _can_connect_unattended(self) -> bool:
+        if self.engine == "local":
+            ready = self.runtime.model_ready(self.local_model.ollama_name)
+            self._refresh_local_status(ready)
+            return ready
         if self.engine == "deepl":
             return bool(self.deepl_key.get().strip())
         return bool(self.settings.key_file or os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"))
@@ -231,6 +268,133 @@ class MainWindow:
         if self._can_connect_unattended():
             self.connect()
 
+    # ------------------------------------------------------------ local models
+
+    def _refresh_local_status(self, installed: bool | None = None) -> None:
+        """The green mark (or not) next to the model, and the note under it."""
+        model = self.local_model
+        if installed is None:
+            installed = self.runtime.model_ready(model.ollama_name)
+        if installed:
+            self.local_status.set("✔ Ready")
+            self.local_status_label.configure(foreground=READY_GREEN)
+            self.download_button.configure(text="Remove…")
+        else:
+            engine_too = "" if self.runtime.is_available() else " + 1.6 GB engine, once"
+            self.local_status.set(f"Not downloaded ({model.download_gb:.1f} GB{engine_too})")
+            self.local_status_label.configure(foreground=MUTED)
+            self.download_button.configure(text="Download")
+        self.local_note.set(f"{model.maker} · {model.summary} · License: {model.license} · "
+                            f"{fit_note(model, detect_gpu(), system_memory_gb())}")
+
+    def _on_local_model_changed(self) -> None:
+        model = next(model for model in catalog.CATALOG if model.label() == self.local_model_name.get())
+        if model.key == self.local_model.key:
+            return
+        self.local_model = model
+        self.settings.local_model = model.key
+        self.settings.save()
+        self.translator = None
+        self.source_box.set_languages([])
+        self.target_box.set_languages([])
+        self.connection_text.set("Not connected")
+        self.connection_label.configure(foreground="gray40")
+        self._update_buttons()
+        if self._can_connect_unattended():
+            self.connect()
+
+    def _download_or_remove(self) -> None:
+        if self._download_cancel is not None:
+            self._download_cancel.set()  # the button says "Cancel" while downloading
+            self.local_status.set("Stopping the download…")
+            return
+        if self.runtime.model_ready(self.local_model.ollama_name):
+            self._remove_model()
+        else:
+            self._download()
+
+    def _download(self) -> None:
+        """Download the engine if needed, then the model, on a background thread.
+
+        Both continue where they stopped if the download is canceled or interrupted.
+        """
+        model, runtime = self.local_model, self.runtime
+        cancel = threading.Event()
+        self._download_cancel = cancel
+        self._download_progress = None
+        self.translator = None
+        self.download_button.configure(text="Cancel")
+        self.connection_text.set("Not connected")
+        self.connection_label.configure(foreground="gray40")
+        self._update_buttons()
+
+        def report(progress: PullProgress | DownloadProgress) -> None:
+            self._download_progress = progress
+
+        def work() -> None:
+            try:
+                if not runtime.is_available():
+                    runtime.install(report, cancel)
+                runtime.client().pull(model.ollama_name, report, cancel)
+            except OperationCancelled:
+                self._results.put(lambda: self._on_download_finished("Download paused: click Download to resume."))
+            except CiceroError as exc:
+                message = str(exc)
+                self._results.put(lambda: self._on_download_finished(message, error=True))
+            except Exception as exc:
+                log.exception("Downloading %s failed", model.name)
+                message = f"{exc.__class__.__name__}: {exc}"
+                self._results.put(lambda: self._on_download_finished(message, error=True))
+            else:
+                self._results.put(lambda: self._on_download_finished(None))
+
+        threading.Thread(target=work, name="download", daemon=True).start()
+
+    def _on_download_finished(self, message: str | None, error: bool = False) -> None:
+        self._download_cancel = None
+        self._download_progress = None
+        self.progress.configure(value=0)
+        self._refresh_local_status()
+        self._update_buttons()
+        if message is None:
+            self.status_text.set(f"{self.local_model.name} is ready.")
+            self.connect()
+            return
+        self.status_text.set(message if not error else "The download failed.")
+        if error:
+            messagebox.showerror(f"{__app_name__} - download failed", message, parent=self.root)
+
+    def _render_download(self) -> None:
+        progress = self._download_progress
+        if self._download_cancel is None or progress is None or self._download_cancel.is_set():
+            return
+        if isinstance(progress, DownloadProgress):
+            what = progress.stage
+            done, total = progress.done, progress.total
+        else:
+            what = f"Downloading {self.local_model.name}"
+            done, total = progress.completed, progress.total
+        self.progress.configure(value=done / total if total else 0)
+        amount = f" {done / 1e9:.2f} of {total / 1e9:.2f} GB" if total else ""
+        self.status_text.set(f"{what}…{amount}")
+        self.local_status.set(f"{done / total:.0%}" if total else "…")
+
+    def _remove_model(self) -> None:
+        model = self.local_model
+        if not messagebox.askyesno(__app_name__, f"Remove {model.name} from this computer?\n\nThis frees "
+                                   f"{model.download_gb:.1f} GB. You can download it again at any time.",
+                                   parent=self.root):
+            return
+        self.translator = None
+        self.connection_text.set("Not connected")
+        self.connection_label.configure(foreground="gray40")
+        try:
+            self.runtime.client().delete(model.ollama_name)
+        except CiceroError as exc:
+            messagebox.showerror(__app_name__, f"Couldn't remove {model.name}.\n\n{exc}", parent=self.root)
+        self._refresh_local_status()
+        self._update_buttons()
+
     def connect(self) -> None:
         """Load the credentials and list the languages on a background thread."""
         engine = self.engine
@@ -242,10 +406,21 @@ class MainWindow:
         self.connection_label.configure(foreground="gray40")
         self._update_buttons()
 
+        local_model, runtime = self.local_model, self.runtime
+        if engine == "local":
+            self.connection_text.set(f"Starting {local_model.name}…")
+
         def work() -> None:
             try:
                 translator: Translator
-                if engine == "deepl":
+                if engine == "local":
+                    client = runtime.client()
+                    if not client.has_model(local_model.ollama_name):
+                        raise CiceroError(f"{local_model.name} isn't downloaded yet. Click Download, and Cicero "
+                                          "connects by itself when it's ready.")
+                    client.load(local_model.ollama_name)  # into GPU memory now, not at the first paragraph
+                    translator = LocalTranslator(local_model, client, shared_server=not runtime.owns_server)
+                elif engine == "deepl":
                     translator = DeepLTranslator(deepl_key)
                 else:
                     account: CloudAccount = load_key_file(key_file) if key_file else load_default()
@@ -278,7 +453,10 @@ class MainWindow:
         self.connection_label.configure(foreground="dark green")
         self.status_text.set("Choose a presentation, Word document or PDF and the language to translate it into.")
         self.connect_button.state(["!disabled"])
-        if engine == "deepl":
+        if engine == "local":
+            self.settings.local_model = self.local_model.key
+            self._refresh_local_status(installed=True)
+        elif engine == "deepl":
             remember = self.remember_deepl_key.get()
             self.settings.remember_deepl_key = remember
             save_deepl_key(self.deepl_key.get().strip() if remember else "")
@@ -348,36 +526,43 @@ class MainWindow:
     # ------------------------------------------------------------- the job
 
     def _validate(self) -> JobOptions | None:
-        def problem(message: str) -> None:
-            messagebox.showwarning(__app_name__, message, parent=self.root)
-
+        """The job's options, or None after telling the user what to fix."""
         source = Path(self.input_path.get().strip())
-        output_text = self.output_path.get().strip()
-        if not source.is_file():
-            return problem(f"The file to translate doesn't exist:\n{source}")
-        if not is_supported(source):
-            return problem("Cicero translates PowerPoint .pptx, Word .docx and PDF files. Open older .ppt or "
-                           ".doc files in PowerPoint or Word and save them as .pptx or .docx first.")
-        if self.target_box.code is None:
-            return problem("Choose the language to translate into.")
-        if not self.source_box.is_valid:
-            return problem("The “From” language isn't in the list. Choose one, or “Detect automatically”.")
-        if self.source_box.code and self.source_box.code == self.target_box.code:
-            return problem("The “From” and “Into” languages are the same.")
-        output = Path(output_text)
+        output = Path(self.output_path.get().strip())
         if output.suffix.lower() != source.suffix.lower():
             output = output.with_name(output.name + source.suffix.lower())
             self.output_path.set(str(output))
-        if not output.parent.is_dir():
-            return problem(f"The folder to save into doesn't exist:\n{output.parent}")
-        if output.resolve() == source.resolve():
-            return problem("Choose a different file to save the translation to, so the original is kept.")
+        target = self.target_box.code
+        problem = self._problem_with(source, output, target)
+        if problem is not None:
+            messagebox.showwarning(__app_name__, problem, parent=self.root)
+            return None
+        assert target is not None  # _problem_with checked it
         confirmed = str(output) == self._confirmed_output  # the save dialog already asked
         if output.exists() and not confirmed and not messagebox.askyesno(
                 __app_name__, f"{output.name} already exists. Replace it?", parent=self.root):
             return None
-        return JobOptions(source, output, self.target_box.code, self.source_box.code, self.write_review.get(),
+        return JobOptions(source, output, target, self.source_box.code, self.write_review.get(),
                           self.include_masters.get() and source.suffix.lower() == ".pptx")
+
+    def _problem_with(self, source: Path, output: Path, target: str | None) -> str | None:
+        """What is wrong with the files and languages chosen, or None if nothing is."""
+        if not source.is_file():
+            return f"The file to translate doesn't exist:\n{source}"
+        if not is_supported(source):
+            return ("Cicero translates PowerPoint .pptx, Word .docx and PDF files. Open older .ppt or .doc files in "
+                    "PowerPoint or Word and save them as .pptx or .docx first.")
+        if target is None:
+            return "Choose the language to translate into."
+        if not self.source_box.is_valid:
+            return "The “From” language isn't in the list. Choose one, or “Detect automatically”."
+        if self.source_box.code and self.source_box.code == target:
+            return "The “From” and “Into” languages are the same."
+        if not output.parent.is_dir():
+            return f"The folder to save into doesn't exist:\n{output.parent}"
+        if output.resolve() == source.resolve():
+            return "Choose a different file to save the translation to, so the original is kept."
+        return None
 
     def start(self) -> None:
         if self.job is not None or self.translator is None:
@@ -450,7 +635,7 @@ class MainWindow:
         if progress.phase is Phase.TRANSLATING and progress.characters_total:
             self.status_text.set(f"Translating… {progress.fraction:.0%}")
         else:
-            self.status_text.set(f"{progress.phase.value}…")
+            self.status_text.set(f"{progress.phase.text}…")
         self._render_counters(progress)
 
     def _render_counters(self, progress: Progress) -> None:
@@ -479,6 +664,7 @@ class MainWindow:
                 break
             callback()
         self._render_progress()
+        self._render_download()
         self.root.after(POLL_MS, self._poll)
 
     def _on_close(self) -> None:
@@ -486,6 +672,9 @@ class MainWindow:
             if not messagebox.askyesno(__app_name__, "A translation is running. Stop it and quit?", parent=self.root):
                 return
             self.job.cancel()
+        if self._download_cancel is not None:
+            self._download_cancel.set()
+        self.runtime.stop()  # Cicero's own model server; one the user runs themselves is left alone
         self.root.destroy()
 
 

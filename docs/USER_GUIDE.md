@@ -6,16 +6,18 @@ document (`.docx`) or a PDF using Google Cloud Translation or DeepL. The origina
 
 ## Choosing a translation service
 
-Cicero works with either service; you only need one.
+Cicero works with any of these; you only need one.
 
-| | Google Cloud Translation | DeepL |
-|---|---|---|
-| Languages | About 190 | Fewer, but with regional variants (British/American English, Brazilian/European Portuguese); the list appears when you connect |
-| Free allowance | A monthly amount of characters on a billed project | 500 000 characters a month on the Free plan |
-| Setup | Google Cloud project, API, service account key | DeepL account and an authentication key |
-| Credentials in Cicero | A key file on your computer | A key you paste; optionally remembered in the system credential store |
+|           | Google Cloud Translation                                | DeepL                                                                                                                          | Local model                                    |
+|-----------|---------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|
+| Languages | About 190                                               | Fewer, but with regional variants (British/American English, Brazilian/European Portuguese); the list appears when you connect | 38 to 200+, depending on the model             |
+| Cost      | A monthly free amount of characters, then per character | 500 000 characters a month free, then per character                                                                            | Free; uses your computer's electricity         |
+| Setup     | Google Cloud project, API, service account key          | DeepL account and an authentication key                                                                                        | None: choose a model and click Download        |
+| Privacy   | Your text goes to Google                                | Your text goes to DeepL                                                                                                        | Nothing leaves your computer                   |
+| Speed     | Fast                                                    | Fast                                                                                                                           | A few seconds per paragraph on a graphics card |
 
-Your documents go straight from your computer to the service you choose.
+With Google and DeepL your documents go straight from your computer to that service.
+With a local model they never leave your computer.
 
 ## Setting up Google Cloud
 
@@ -38,7 +40,7 @@ You need to do this once.
 Keep the key file private. Anyone who has it can translate text on your bill.
 See [Keeping your keys safe](#keeping-your-keys-safe).
 
-> **Can't create keys?** Organisations often forbid service account keys (the
+> **Can't create keys?** Organizations often forbid service account keys (the
 > policy `iam.disableServiceAccountKeyCreation`). Use Application Default
 > Credentials instead: install the [gcloud CLI](https://cloud.google.com/sdk/docs/install), run
 >
@@ -60,6 +62,78 @@ See [Keeping your keys safe](#keeping-your-keys-safe).
 
 Keep the key private, like a password.
 
+## Local models
+
+A local model is an open translation model that runs on your own computer,
+ideally on its graphics card. Cicero offers four:
+
+| Model                           | Download | Graphics memory | Good for                                                                                             |
+|---------------------------------|----------|-----------------|------------------------------------------------------------------------------------------------------|
+| **TranslateGemma 4B** (Google)  | 3.3 GB   | 8 GB            | Fast, 55 languages; the default                                                                      |
+| **Hy-MT2 7B** (Tencent)         | 4.6 GB   | 8 GB            | Uses the surrounding text on each slide or page; 38 languages (many Asian ones, fewer European ones) |
+| **Qwen 3.5 9B** (Alibaba)       | 6.6 GB   | 8 GB            | Reads the whole document first and keeps names and terms consistent; 200+ languages                  |
+| **TranslateGemma 12B** (Google) | 8.1 GB   | 16 GB           | The best quality of the four                                                                         |
+
+The note under the model says whether it fits your graphics card. A model that
+doesn't fit still works: part of it runs on the processor, which is slower.
+
+**Without a graphics card** (or with a small one, such as the 2 GB cards of older
+laptops), a model runs in the computer's main memory, on the processor. It then needs
+about as much memory as it takes on a graphics card (TranslateGemma 4B 2.9 GB, Hy-MT2
+5.3 GB, Qwen 3.5 9B 5.6 GB) plus what the system uses, and the note says when a model
+is too large for this computer's memory. With 8 GB of memory, use **TranslateGemma 4B**:
+on a desktop processor it translates a paragraph in 2 to 4 seconds, and on a 2015 laptop
+(a ThinkPad X1 Carbon with a Core i7-5600U) in about 8, so a few pages take some minutes.
+
+**Downloading.** Choose the model and click **Download**. The first time, Cicero
+also downloads the engine that runs models (Ollama, 1.6 GB, once). The progress bar
+shows both; **Cancel** pauses, and clicking **Download** again continues where it
+stopped. When the model is ready a green **✔ Ready** appears and Cicero connects.
+From then on Cicero connects by itself when it starts.
+
+**Removing.** When a model is ready its button becomes **Remove…**, which deletes
+it and frees its space. You can download it again at any time.
+
+**Where things go.** The engine goes in Cicero's own folder
+(`%LOCALAPPDATA%\Cicero` on Windows, `~/.local/share/cicero` on Linux,
+`~/Library/Application Support/Cicero` on macOS). The models go where Ollama always keeps
+them (`.ollama\models` in your user folder), so if you also use Ollama yourself,
+both share the same downloads. If an Ollama is already running on your computer,
+Cicero uses it instead of starting its own.
+
+**Graphics cards.** NVIDIA cards work out of the box (driver 551.61 or newer).
+For AMD cards Cicero also downloads Ollama's ROCm add-on; on Linux they also need
+AMD's ROCm driver (see AMD's instructions for your distribution). Without a
+suitable driver the model runs on the processor.
+
+**Linux.** Local models work on Debian, Ubuntu, Fedora and other 64-bit
+distributions (x86-64 and ARM). If you installed Ollama with its own installer, it
+runs as a system service and Cicero uses it, with the models it already has.
+Cicero itself needs Python with Tkinter (`python3-tk` on Debian/Ubuntu,
+`python3-tkinter` on Fedora).
+
+**While translating.** The engine runs hidden, only for Cicero, and stops when you
+close Cicero. The first translation after starting takes a little longer while the
+model loads into the graphics card. Each paragraph then takes a few seconds; a
+40-slide presentation takes a few minutes.
+
+**How Cicero gets better translations from local models.** Each model gets the
+context it was trained to use:
+
+- **Qwen 3.5** first reads the whole document (step *Reading the whole document*)
+  and writes a short summary and a glossary of names, products and technical
+  terms. Every paragraph is then translated with the summary, the glossary terms it
+  contains, the earlier paragraphs on the same slide or page with their
+  translations, and where it sits (a title, a table cell, the speaker notes…).
+- **Hy-MT2** gets the earlier paragraphs on the same slide or page as background,
+  in the format Tencent trained it with.
+- **TranslateGemma** translates each paragraph on its own, with the exact prompt
+  Google trained it with. It needs to know the language of the document: with
+  *Detect automatically*, Cicero works it out from the whole document.
+
+Bold words, links and other formatting inside a paragraph stay with the words they
+belong to, as with Google and DeepL.
+
 ## The window
 
 ![The Cicero window](images/screenshot.png)
@@ -69,8 +143,9 @@ reporting a problem.
 
 ### Translation service
 
-- **Service**: *Google Cloud Translation* or *DeepL*. Switching connects to the
-  other service straight away if Cicero already has its credentials. The language
+- **Service**: *Google Cloud Translation*, *DeepL* or *Local model*. Switching
+  connects to the other service straight away if Cicero already has its credentials
+  (or, for a local model, if it's downloaded). The language
   boxes then show that service's languages, and each service remembers the
   languages you last used with it.
 
@@ -140,7 +215,7 @@ translated, and the status bar at the bottom of the window counts:
 
 When the job ends the status bar keeps the totals.
 
-The window stays usable and you can click **Stop** at any time:
+The window stays usable, and you can click **Stop** at any time:
 Cicero finishes the request already on its way to Google, then stops without
 saving anything.
 
@@ -151,25 +226,25 @@ open it.
 
 ### Presentations
 
-| Translated | Not translated |
-|------------|----------------|
-| Slide titles and placeholders | Text inside pictures |
-| Text boxes and shapes, including inside groups (and groups of groups) | Charts (titles, labels, data) |
-| Table cells | Comments |
-| SmartArt | |
-| Speaker notes | |
-| Slide masters and layouts, if you ask for it (see below) | |
-| | Text with no letters: numbers, dates such as `2024`, symbols, bullets |
+| Translated                                                            | Not translated                                                        |
+|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
+| Slide titles and placeholders                                         | Text inside pictures                                                  |
+| Text boxes and shapes, including inside groups (and groups of groups) | Charts (titles, labels, data)                                         |
+| Table cells                                                           | Comments                                                              |
+| SmartArt                                                              |                                                                       |
+| Speaker notes                                                         |                                                                       |
+| Slide masters and layouts, if you ask for it (see below)              |                                                                       |
+|                                                                       | Text with no letters: numbers, dates such as `2024`, symbols, bullets |
 
 ### Word documents
 
-| Translated | Not translated |
-|------------|----------------|
-| Body text, headings, lists | Text inside pictures |
-| Tables, including tables inside tables | Charts and SmartArt |
-| Text boxes | Field codes (tables of contents and page numbers update when Word refreshes fields) |
-| Headers and footers | Deleted text in tracked changes (insertions are translated) |
-| Footnotes, endnotes and comments | Text with no letters |
+| Translated                             | Not translated                                                                      |
+|----------------------------------------|-------------------------------------------------------------------------------------|
+| Body text, headings, lists             | Text inside pictures                                                                |
+| Tables, including tables inside tables | Charts and SmartArt                                                                 |
+| Text boxes                             | Field codes (tables of contents and page numbers update when Word refreshes fields) |
+| Headers and footers                    | Deleted text in tracked changes (insertions are translated)                         |
+| Footnotes, endnotes and comments       | Text with no letters                                                                |
 
 Word documents have no fixed pages (Word lays them out when it opens the file),
 so the status bar shows paragraphs and characters only, and the review
@@ -179,23 +254,35 @@ spreadsheet has no page column; its *Location* says `Body`, `Body › Table`,
 ### PDFs
 
 A PDF has no paragraphs or text boxes, only letters placed on the page. Cicero
-reads the text in blocks (roughly paragraphs), translates each block, removes the
+works out the paragraphs from how the lines sit, translates each one, removes the
 original letters and writes the translation in the same place:
 
-- Font size, bold, italic and colour are kept for each part of the block. The
+- Lines are joined into one paragraph only when the text was wrapped from one to
+  the next. Table cells, a label and its value, a date beside a title, and the lines
+  of an address each stay on their own, so a form or an invoice keeps its layout.
+- Font size, bold, italic and color are kept for each part of the paragraph. The
   typeface is replaced by a standard one of the same kind (sans-serif, serif or
   monospaced), because PDFs usually contain only the letters their text uses.
+- Left-, right- and center-aligned text keeps its alignment.
 - Pictures, drawings, lines, backgrounds and shaded boxes are not touched.
-- Longer translations first use the free space to the right of one-line text and
-  below every block, without running into other text, pictures or out of a box the
-  text sits in. Only if that isn't enough is the text made smaller. If it still
-  doesn't fit, the end message says how many paragraphs may be cut off.
+- Longer translations first use the free space beside one-line text (to the right,
+  or to the left of right-aligned text) and below every paragraph, without running
+  into other text, pictures, ruled lines or out of a box the text sits in. Only if
+  that isn't enough is the text made smaller. If it still doesn't fit, the end
+  message says how many paragraphs may be cut off.
 - Words hyphenated at the end of a line are joined before translating.
 
 What isn't translated:
 
+- **Postal addresses** (the lines that end in a postcode and town, and the name and
+  street above them), and the names in them wherever they appear again: an address
+  must stay valid, and names aren't translated.
+- E-mail and web addresses, phone numbers, IBANs and other codes on their own.
 - **Scanned PDFs** (pictures of pages) contain no text. Run them through OCR first,
   for example with Adobe Acrobat or [ocrmypdf](https://ocrmypdf.readthedocs.io/).
+- A scanned letterhead under a document (its logo and footer): OCR software sometimes
+  turns it into text drawn to look like the scan, which redrawn in another typeface
+  would no longer look like it.
 - Rotated or vertical text, text inside pictures, and form fields.
 - **Password-protected PDFs** can't be opened; remove the password first.
 
@@ -206,7 +293,7 @@ document (Word or PowerPoint), translating that gives better results.
 ### Formatting
 
 Each paragraph keeps its formatting. When a paragraph mixes formats (a bold word,
-a link, a colour), Cicero tells the translator which words belong together and
+a link, a color), Cicero tells the translator which words belong together and
 puts each part of the translation back into the matching run. Because word order
 changes between languages, the bold part may move within the sentence, which is
 what you want. Occasionally the translator merges two parts; their text then
@@ -214,7 +301,7 @@ takes the formatting of the first one.
 
 Translated text is often longer than the original (German and French are
 typically 20–30 % longer than English). PowerPoint's *Shrink text on overflow*
-setting helps; otherwise check slides with tight text boxes afterwards.
+setting helps; otherwise check slides with tight text boxes afterward.
 
 ## Keeping your keys safe
 
@@ -231,6 +318,28 @@ setting helps; otherwise check slides with tight text boxes afterwards.
   DeepL also lets you set a cost control limit on Pro plans.
 
 ## Troubleshooting
+
+**A local model is very slow**
+: It probably doesn't fit in your graphics card and runs partly on the processor.
+  The note under the model says so. Choose a smaller model, or close programs that
+  use the graphics card (games, video editors, other AI tools).
+
+**"Cicero couldn't tell which language the document is written in"**
+: TranslateGemma needs the source language, and the document has too little text to
+  tell. Choose it in **From**.
+
+**A local model left some paragraphs untranslated**
+: The model returned nothing for them; the message at the end says how many. Try
+  another model, or translate that document with Google or DeepL.
+
+**"Unpacking the engine needs zstd"** (Linux)
+: Cicero installs the `zstandard` package for this; if it is missing, install
+  `zstd` (`sudo apt install zstd` or `sudo dnf install zstd`) and try again.
+
+**"The local model engine didn't start"
+: The message names a log file (`ollama-server.log` in Cicero's folder) with the
+  details. An outdated graphics driver is the usual cause: NVIDIA cards need driver
+  551.61 or newer.
 
 **"The Cloud Translation API isn't enabled for project …"**
 : Enable it under **APIs & Services → Library → Cloud Translation API**. It can

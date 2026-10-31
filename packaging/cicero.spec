@@ -15,7 +15,14 @@ a = Analysis(
     pathex=[str(ROOT)],
     datas=[(str(ASSETS), "cicero/assets")],
     hookspath=[str(Path(SPECPATH) / "hooks")],
-    excludes=["pytest"],
+    excludes=[
+        "pytest",
+        # PyMuPDF 2 imports its optional layout analyzer (pymupdf.layout, ~49 MB of ONNX models) whenever it
+        # is installed. Cicero never uses it, and bundled without its data it makes `import pymupdf` fail with
+        # FileNotFoundError. Left out, the import fails cleanly and PyMuPDF works as before.
+        "pymupdf.layout",
+        "onnxruntime",
+    ],
 )
 pyz = PYZ(a.pure)
 
