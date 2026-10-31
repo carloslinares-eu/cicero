@@ -25,7 +25,7 @@ cicero/
 │   │   ├── prompts.py     run tags, per-style prompts, the brief, cleaning answers
 │   │   ├── translator.py  LocalTranslator: prepare() + translate(), the context strategy
 │   │   ├── languages.py   language tables per model; mapping detected codes
-│   │   └── hardware.py    detect_gpu() via nvidia-smi, fit_note()
+│   │   └── hardware.py    detect_gpu() via nvidia-smi, system_memory_gb(), fit_note()
 │   ├── credentials.py   load_key_file(), load_default() → CloudAccount
 │   ├── review.py        write_review(): the .csv review spreadsheet
 │   ├── settings.py      Settings: remembered paths and languages (JSON in the user config folder)

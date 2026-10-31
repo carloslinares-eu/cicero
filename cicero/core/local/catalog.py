@@ -29,6 +29,7 @@ class LocalModel:
     ollama_name: str
     download_gb: float
     gpu_gb: int  # graphics memory it runs well in (it still runs with less, more slowly)
+    memory_gb: float  # memory it takes once loaded, on the graphics card or in main memory (Ollama's figure)
     style: PromptStyle
     language_codes: list[str]
     license: str
@@ -58,6 +59,7 @@ CATALOG: list[LocalModel] = [
         ollama_name="translategemma:4b",
         download_gb=3.3,
         gpu_gb=8,
+        memory_gb=2.9,
         style=PromptStyle.TRANSLATEGEMMA,
         language_codes=languages.TRANSLATEGEMMA,
         license="Gemma Terms of Use",
@@ -73,6 +75,7 @@ CATALOG: list[LocalModel] = [
         ollama_name="hf.co/tencent/Hy-MT2-7B-GGUF:Q4_K_M",
         download_gb=4.6,
         gpu_gb=8,
+        memory_gb=5.3,
         style=PromptStyle.HY_MT,
         language_codes=languages.HY_MT2,
         license="Apache 2.0",
@@ -86,7 +89,8 @@ CATALOG: list[LocalModel] = [
         maker="Alibaba",
         ollama_name="qwen3.5:9b",
         download_gb=6.6,
-        gpu_gb=8,  # 5.6 GB in memory: the download includes an image encoder that translation doesn't load
+        gpu_gb=8,
+        memory_gb=5.6,  # less than the download, which includes an image encoder that translation doesn't load
         style=PromptStyle.GENERAL,
         language_codes=languages.GENERAL,
         license="Apache 2.0",
@@ -102,6 +106,7 @@ CATALOG: list[LocalModel] = [
         ollama_name="translategemma:12b",
         download_gb=8.1,
         gpu_gb=16,
+        memory_gb=8.5,  # estimated from the download and the 4B's figure, not measured
         style=PromptStyle.TRANSLATEGEMMA,
         language_codes=languages.TRANSLATEGEMMA,
         license="Gemma Terms of Use",

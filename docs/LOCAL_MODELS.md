@@ -185,6 +185,26 @@ right (`Нетна сума`, `Премия`, `Валута`, `Референц�
 heading *Art* (type) as `Изкуство` ("art") and *Vers.St.* (insurance tax) as `Версия Ст.`.
 For forms and invoices, prefer a model that reads the whole document, or DeepL.
 
+### On the processor only
+
+For computers without a usable graphics card, such as an old laptop with 8 GB of
+memory: the same documents with the graphics card switched off for Ollama
+(`num_gpu: 0`) and 4 threads of an Intel Core i7-10700K. An older laptop's processor is
+slower still, perhaps two to four times.
+
+| Model             | 16 slide paragraphs | 54 invoice cells (to Bulgarian) | In main memory |
+|-------------------|---------------------|---------------------------------|----------------|
+| TranslateGemma 4B | 60 s                | 108 s                           | 2.9 GB         |
+| Qwen 3.5 4B       | 118 s               | 375 s, including reading it     | 3.4 GB         |
+
+Qwen 3.5 4B was tried as a small model that reads the whole document first, and left
+out. Its long prompts (summary, glossary, earlier paragraphs) are slow to read on a
+processor. Its Spanish was about as good as TranslateGemma's, and it kept the company
+name. But its Bulgarian had invented words (`Страхувател`, `Грувна сума`), and it
+repeated TranslateGemma's worst mistake (*Art* as `Изкуство`). TranslateGemma 4B
+remains the model for computers with 8 GB of memory, and the window now says when a
+model is too large for the computer's main memory.
+
 The same check on GitHub Actions' Debian 12 and Fedora containers (no graphics card):
 Cicero downloads its own Ollama, TranslateGemma 4B, and translates the presentation on
 the processor.

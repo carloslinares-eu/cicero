@@ -40,6 +40,9 @@ All notable changes to this project are documented here. The format follows
 - Paragraphs made only of e-mail or web addresses, phone numbers, IBANs or other codes are no
   longer sent to the translator, in any kind of document.
 - Local models that read the whole document are told when a PDF paragraph is a table cell.
+- On computers whose graphics card is too small for a local model, or that have none, the window
+  weighs the model against the computer's main memory and says when it is too large, instead of
+  only naming the graphics memory it would like.
 
 ### Fixed
 

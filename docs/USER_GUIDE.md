@@ -77,6 +77,14 @@ ideally on its graphics card. Cicero offers four:
 The note under the model says whether it fits your graphics card. A model that
 doesn't fit still works: part of it runs on the processor, which is slower.
 
+**Without a graphics card** (or with a small one, such as the 2 GB cards of older
+laptops), a model runs in the computer's main memory, on the processor. It then needs
+about as much memory as it takes on a graphics card (TranslateGemma 4B 2.9 GB, Hy-MT2
+5.3 GB, Qwen 3.5 9B 5.6 GB) plus what the system uses, and the note says when a model
+is too large for this computer's memory. With 8 GB of memory, use **TranslateGemma 4B**:
+on a desktop processor it translates a paragraph in 2 to 4 seconds; an older laptop
+takes several times as long, so a few pages take some minutes.
+
 **Downloading.** Choose the model and click **Download**. The first time, Cicero
 also downloads the engine that runs models (Ollama, 1.6 GB, once). The progress bar
 shows both; **Cancel** pauses, and clicking **Download** again continues where it

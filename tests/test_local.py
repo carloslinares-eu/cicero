@@ -44,6 +44,7 @@ def test_catalogue_is_consistent():
     for model in catalog.CATALOG:
         assert all(code in languages.NAMES for code in model.language_codes), model.key
         assert model.gpu_gb in (8, 12, 16) and model.download_gb < model.gpu_gb
+        assert model.memory_gb < model.gpu_gb
     assert len(languages.TRANSLATEGEMMA) == 55 and len(languages.HY_MT2) == 38
     assert set(languages.HY_MT2) - set(languages.CHINESE_NAMES) == set()
     assert catalog.get("no-such-model").key == catalog.DEFAULT_KEY
@@ -306,6 +307,19 @@ def test_amd_memory_is_read_from_sysfs(tmp_path):
         (device / "mem_info_vram_total").write_text(memory)
     cards = _amd_cards(tmp_path)
     assert [(card.name, card.memory_gb) for card in cards] == [("AMD Radeon", 16.0)]
+
+
+def test_the_note_says_where_a_model_runs_and_whether_memory_is_enough():
+    from cicero.core.local.hardware import Gpu, fit_note, system_memory_gb
+
+    small, large = catalog.get("translategemma-4b"), catalog.get("qwen3.5-9b")
+    assert fit_note(large, Gpu("NVIDIA GeForce RTX 3070 Ti", 8.0), 32.0) == "Fits your RTX 3070 Ti (8 GB)"
+    # An old laptop: 8 GB of memory (7.7 usable), and no graphics card or a 2 GB one.
+    assert fit_note(small, None, 7.7) == "Runs best with 8 GB of graphics memory, or slowly on the processor"
+    assert fit_note(large, None, 7.7).startswith("Too large for this computer's 7.7 GB of memory")
+    assert fit_note(large, Gpu("GeForce 940MX", 2.0), 7.7).startswith("Larger than your 2 GB card")
+    assert fit_note(large, None, None).startswith("Runs best with 8")  # memory unknown: no verdict
+    assert (system_memory_gb() or 0) > 0.5
 
 
 def test_a_running_ollama_service_is_asked_which_models_it_has(ollama, tmp_path):

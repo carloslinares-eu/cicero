@@ -20,7 +20,7 @@ from cicero.core.documents import SUPPORTED, is_supported
 from cicero.core.errors import CiceroError, OperationCancelled
 from cicero.core.job import JobOptions, JobResult, Phase, Progress, TranslationJob
 from cicero.core.local import catalog
-from cicero.core.local.hardware import detect_gpu, fit_note
+from cicero.core.local.hardware import detect_gpu, fit_note, system_memory_gb
 from cicero.core.local.ollama import PullProgress
 from cicero.core.local.runtime import DownloadProgress, EngineRuntime, OllamaRuntime
 from cicero.core.local.translator import LocalTranslator
@@ -285,7 +285,7 @@ class MainWindow:
             self.local_status_label.configure(foreground=MUTED)
             self.download_button.configure(text="Download")
         self.local_note.set(f"{model.maker} · {model.summary} · License: {model.license} · "
-                            f"{fit_note(model.gpu_gb, detect_gpu())}")
+                            f"{fit_note(model, detect_gpu(), system_memory_gb())}")
 
     def _on_local_model_changed(self) -> None:
         model = next(model for model in catalog.CATALOG if model.label() == self.local_model_name.get())
